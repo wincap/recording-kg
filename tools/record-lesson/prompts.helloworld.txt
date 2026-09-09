@@ -1,0 +1,5 @@
+@expect hello world
+在当前项目新建 helloworld.py，文件内容只有这一行：
+print("hello world")
+保存后立刻在终端执行：python3 helloworld.py
+把终端完整输出发回来。不要改其他文件。

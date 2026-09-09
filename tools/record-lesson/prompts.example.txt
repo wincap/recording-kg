@@ -1,0 +1,4 @@
+只改 app.py：加一行注释 # lesson-1。不要改别的文件。
+
+---
+只改 app.py：把 print("hello") 改成 print("hello, lesson")。不要新建文件。

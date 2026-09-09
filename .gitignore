@@ -1,0 +1,17 @@
+.DS_Store
+.env
+**/.env
+**/.venv/
+tools/ppt-studio/jobs/
+recordings/
+.cursor/record-state/
+vendor/
+tools/record-lesson/bin/
+**/.lesson-snapshots/
+**/.llm-engine
+**/student-notes.json
+**/student-assets/
+tools/record-lesson/.llm-engine
+demo-playground/.venv/
+**/__pycache__/
+*.pyc

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/record-event.sh beforeShell"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": ".cursor/hooks/record-event.sh afterShell"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/record-event.sh afterEdit"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": ".cursor/hooks/record-event.sh afterReply"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/record-event.sh stop"
+      }
+    ]
+  }
+}

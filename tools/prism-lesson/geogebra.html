@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>直三棱柱 DE · 边画边讲</title>
+  <style>
+    :root {
+      --paper: #f4efe4;
+      --ink: #1c1914;
+      --gold: #e3b24a;
+      --mute: #9a8f7c;
+      --bar: #12100d;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", "Noto Serif SC", serif;
+      background: #0b0a08;
+      color: var(--paper);
+    }
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr auto;
+    }
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+    }
+    .stage {
+      position: relative;
+      background: #14110d;
+      min-height: 280px;
+    }
+    canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+    canvas.drag { cursor: grabbing; }
+    .caption {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 12px 16px;
+      border-radius: 4px;
+      background: rgba(12, 10, 8, 0.72);
+      border-left: 3px solid var(--gold);
+      font-size: 15px;
+      line-height: 1.65;
+      pointer-events: none;
+    }
+    .caption b { color: var(--gold); font-size: 12px; letter-spacing: 0.12em; display: block; margin-bottom: 4px; }
+    aside {
+      overflow: auto;
+      background: #161310;
+      border-left: 1px solid #2a241c;
+      padding: 18px 14px 20px;
+    }
+    h1 { font-size: 18px; margin: 0 0 6px; font-weight: 600; }
+    .sub { color: var(--mute); font-size: 12px; line-height: 1.5; margin: 0 0 14px; }
+    .step {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 9px 10px;
+      margin: 0 0 6px;
+      cursor: pointer;
+      color: #c9c0b0;
+    }
+    .step:hover { background: #211c16; }
+    .step.on { background: #2a2114; border-color: #7a5c1e; color: var(--paper); }
+    .step b { display: block; color: var(--gold); font-size: 11px; letter-spacing: 0.08em; margin-bottom: 2px; }
+    .step p { margin: 0; font-size: 13px; line-height: 1.45; }
+    .ans {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #2a2114;
+      color: var(--gold);
+      font-size: 13px;
+    }
+    .player {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px 14px;
+      background: var(--bar);
+      border-top: 1px solid #2c261c;
+    }
+    .btn {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #1c1408;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .ghost {
+      width: auto;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 17px;
+      background: #2a241c;
+      color: var(--paper);
+      font-size: 13px;
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .times { color: var(--mute); font-variant-numeric: tabular-nums; font-size: 12px; min-width: 92px; }
+    .scrub {
+      position: relative;
+      height: 28px;
+      display: flex;
+      align-items: center;
+    }
+    .scrub input {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #3a3228;
+      outline: none;
+    }
+    .scrub input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--gold);
+      cursor: pointer;
+    }
+    .marks {
+      position: absolute;
+      inset: 12px 0 auto;
+      height: 4px;
+      pointer-events: none;
+    }
+    .marks i {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 4px;
+      background: #8a7a58;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 7, 5, 0.62);
+      text-align: center;
+      padding: 24px;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 { margin: 0 0 8px; font-size: 32px; font-weight: 600; }
+    .overlay p { margin: 0 0 22px; color: #d8cfc0; font-size: 16px; max-width: 28em; line-height: 1.6; }
+    .play-big {
+      width: 88px;
+      height: 88px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #1c1408;
+      font-size: 34px;
+      cursor: pointer;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    }
+    audio { display: none; }
+    @media (max-width: 860px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: 52vh auto; }
+      aside { border-left: 0; border-top: 1px solid #2a241c; }
+      .player { grid-template-columns: auto 1fr auto; }
+      .ghost.replay { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="main">
+      <div class="stage">
+        <canvas id="view"></canvas>
+        <div class="caption" id="caption"><b>准备</b>点播放，一步一步听。</div>
+        <div class="overlay" id="startCard">
+          <h2>第15题 · 直三棱柱</h2>
+          <p>∠ACB=90°，AC=BC。D、E 分别是 AB、AC₁ 中点。先证 DE 平行于侧面，再求距离。</p>
+          <button class="play-big" id="startPlay" aria-label="开始讲解">▶</button>
+        </div>
+        <div class="overlay hidden" id="endCard">
+          <h2>讲完了</h2>
+          <p>DE 到平面 BCC₁B₁ 的距离是 <b style="color:var(--gold)">1</b></p>
+          <button class="play-big" id="replayPlay" aria-label="再看一遍">↻</button>
+        </div>
+      </div>
+      <aside>
+        <h1>边画边讲</h1>
+        <p class="sub">画面跟着解说走。也可以点某一步，从那里继续听。</p>
+        <div id="steps"></div>
+        <div class="ans">答案：距离 = 1</div>
+      </aside>
+    </div>
+    <div class="player">
+      <button class="btn" id="playBtn" aria-label="播放">▶</button>
+      <div class="scrub">
+        <div class="marks" id="marks"></div>
+        <input id="seek" type="range" min="0" max="141" step="0.05" value="0" />
+      </div>
+      <div class="times" id="times">0:00 / 2:21</div>
+      <button class="ghost replay" id="replayBtn">再看一遍</button>
+    </div>
+  </div>
+  <audio id="voice" preload="auto" src="audio/lecture.mp3"></audio>
+  <script>
+    const FALLBACK = {
+      duration: 141.19,
+      steps: [
+        { id: 0, title: "立柱", start: 0, end: 18.19, say: "这是一道立体几何题。图里是直三棱柱 ABC 到 A1B1C1。底面三角形 ABC 在 C 点是直角，而且 AC 等于 BC。我们先把这根柱子立起来，看清楚上下两个全等的直角三角形。" },
+        { id: 1, title: "标 DE", start: 18.19, end: 34.99, say: "题目说，D 是 AB 的中点，E 是对角线 AC1 的中点。把 D 和 E 连起来，就是这条金色的线段 DE。第一问要证它平行于侧面 BCC1B1，第二问要求它到这个侧面的距离。" },
+        { id: 2, title: "建系", start: 34.99, end: 50.47, say: "立体几何最稳的办法是建系。把直角顶点 C 当作原点。CA 沿着 x 轴，CB 沿着 y 轴，竖直棱 CC1 沿着 z 轴。这样三个互相垂直的方向都对齐了。" },
+        { id: 3, title: "写出坐标", start: 50.47, end: 73.01, say: "设 AC 等于 BC 等于 a，高 CC1 等于 h。那么 A 是 a,0,0，B 是 0,a,0，C1 是 0,0,h。D 是 AB 中点，坐标就是 a 比 2，a 比 2，0。E 是 AC1 中点，坐标是 a 比 2，0，h 比 2。" },
+        { id: 4, title: "证平行", start: 73.01, end: 96.19, say: "向量 DE 等于 E 减 D，算出来是 0，负的 a 比 2，h 比 2。侧面 BCC1B1 正好是坐标平面 x 等于 0，法向量是 1,0,0。DE 点乘法向量等于 0，所以 DE 平行于这个面。D 的横坐标不是 0，线又不在面上。第一问得证。" },
+        { id: 5, title: "线面角", start: 96.19, end: 121.44, say: "第二问给了高 CC1 等于 2，并且 DE 与另一个侧面 ACC1A1 成 45 度。ACC1A1 是 y 等于 0，法向量是 0,1,0。线面角的正弦，等于方向向量点乘法向量的绝对值，再除以模长。代入 45 度，得到根号 2 比 2，等于 a 比根号 a 方加 4。" },
+        { id: 6, title: "求出距离", start: 121.44, end: 141.19, say: "两边平方，二分之一等于 a 方比 a 方加 4，解出 a 等于 2。DE 已经平行于青色那个侧面，平行线到平面的距离处处相等，就等于点 D 到 x 等于 0 的距离，也就是 a 比 2，等于 1。所以这道题的答案是 1。" }
+      ]
+    };
+
+    const A = 2, H = 2;
+    const P = {
+      C: [0, 0, 0], A: [A, 0, 0], B: [0, A, 0],
+      C1: [0, 0, H], A1: [A, 0, H], B1: [0, A, H],
+      D: [A / 2, A / 2, 0], E: [A / 2, 0, H / 2],
+    };
+
+    const canvas = document.getElementById("view");
+    const ctx = canvas.getContext("2d");
+    const voice = document.getElementById("voice");
+    const playBtn = document.getElementById("playBtn");
+    const seek = document.getElementById("seek");
+    const times = document.getElementById("times");
+    const caption = document.getElementById("caption");
+    const startCard = document.getElementById("startCard");
+    const endCard = document.getElementById("endCard");
+    const stepsBox = document.getElementById("steps");
+    const marks = document.getElementById("marks");
+
+    let cues = FALLBACK;
+    let step = 0;
+    let yaw = 0.72, pitch = 0.42, dragging = false, lx = 0, ly = 0;
+    let seeking = false;
+
+    function clock(sec) {
+      const s = Math.max(0, Math.floor(sec || 0));
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+
+    function cueAt(t) {
+      const list = cues.steps;
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (t + 0.04 >= list[i].start) return list[i];
+      }
+      return list[0];
+    }
+
+    function setStep(id, say) {
+      if (step !== id) {
+        step = id;
+        draw();
+      }
+      document.querySelectorAll(".step").forEach((el) => {
+        el.classList.toggle("on", Number(el.dataset.i) === id);
+      });
+      const item = cues.steps[id];
+      caption.innerHTML = "<b>" + (id + 1) + " / " + cues.steps.length + "　" + item.title + "</b>" + (say || item.say);
+    }
+
+    function renderList() {
+      stepsBox.innerHTML = cues.steps.map((item) => (
+        '<div class="step" data-i="' + item.id + '"><b>' +
+        clock(item.start) + "　" + item.title +
+        "</b><p>" + item.say.slice(0, 36) + "…</p></div>"
+      )).join("");
+      stepsBox.querySelectorAll(".step").forEach((el) => {
+        el.onclick = () => jumpTo(cues.steps[Number(el.dataset.i)].start, true);
+      });
+      marks.innerHTML = cues.steps.map((item) => {
+        const pct = (item.start / cues.duration) * 100;
+        return '<i style="left:' + pct + '%"></i>';
+      }).join("");
+      seek.max = String(cues.duration);
+    }
+
+    function jumpTo(t, play) {
+      startCard.classList.add("hidden");
+      endCard.classList.add("hidden");
+      const dur = cues.duration || voice.duration || 141;
+      const target = Math.max(0, Math.min(dur - 0.05, t));
+      setStep(cueAt(target).id);
+      const after = () => {
+        if (play) voice.play().catch(() => {});
+        else voice.pause();
+        sync();
+      };
+      if (Math.abs((voice.currentTime || 0) - target) < 0.12) {
+        after();
+        return;
+      }
+      let done = false;
+      const finishSeek = () => {
+        if (done) return;
+        done = true;
+        voice.removeEventListener("seeked", finishSeek);
+        after();
+      };
+      voice.addEventListener("seeked", finishSeek);
+      try {
+        voice.currentTime = target;
+      } catch (_) {
+        finishSeek();
+        return;
+      }
+      window.setTimeout(finishSeek, 350);
+    }
+
+    function sync() {
+      const t = voice.currentTime || 0;
+      if (!seeking) seek.value = String(t);
+      times.textContent = clock(t) + " / " + clock(voice.duration || cues.duration);
+      const now = cueAt(t);
+      setStep(now.id);
+      playBtn.textContent = voice.paused ? "▶" : "❚❚";
+    }
+
+    function toggle() {
+      startCard.classList.add("hidden");
+      if (voice.ended || voice.currentTime >= cues.duration - 0.15) {
+        jumpTo(0, true);
+        return;
+      }
+      if (voice.paused) {
+        endCard.classList.add("hidden");
+        voice.play();
+      } else {
+        voice.pause();
+      }
+    }
+
+    function finish() {
+      voice.pause();
+      playBtn.textContent = "▶";
+      endCard.classList.remove("hidden");
+      startCard.classList.add("hidden");
+      setStep(cues.steps.length - 1);
+    }
+
+    function resize() {
+      const r = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(320, r.width) * dpr;
+      canvas.height = Math.max(280, r.height) * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function rot(p) {
+      const [x0, y0, z0] = p;
+      const cy = Math.cos(yaw), sy = Math.sin(yaw);
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const x1 = x0 * cy - y0 * sy;
+      const y1 = x0 * sy + y0 * cy;
+      const y2 = y1 * cp - z0 * sp;
+      const z2 = y1 * sp + z0 * cp;
+      return [x1, y2, z2];
+    }
+
+    function proj(p) {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const [x, y, z] = rot(p);
+      const s = Math.min(w, h) * 0.22;
+      return [w * 0.48 + (x - y) * s * 0.85, h * 0.62 - z * s * 0.95 - (x + y) * s * 0.18];
+    }
+
+    function face(pts, fill) {
+      ctx.beginPath();
+      pts.forEach((p, i) => {
+        const [x, y] = proj(p);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+
+    function line(a, b, color, width, dash) {
+      const pa = proj(a), pb = proj(b);
+      ctx.beginPath();
+      ctx.setLineDash(dash || []);
+      ctx.moveTo(pa[0], pa[1]);
+      ctx.lineTo(pb[0], pb[1]);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function dot(p, color, r) {
+      const [x, y] = proj(p);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function label(p, text, color, dx, dy) {
+      const [x, y] = proj(p);
+      ctx.fillStyle = color;
+      ctx.font = "16px Songti SC, Palatino Linotype, serif";
+      ctx.fillText(text, x + (dx || 8), y + (dy || -8));
+    }
+
+    function axis(from, to, color, name) {
+      line(from, to, color, 1.6);
+      label(to, name, color, 6, 4);
+    }
+
+    function draw() {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#1d1812");
+      g.addColorStop(1, "#0c0a08");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      const showDE = step >= 1;
+      const glowBC = step >= 2 && step <= 4;
+      const glowAC = step >= 5;
+      const showAxis = step >= 2;
+
+      face([P.C, P.A, P.B], "rgba(80,120,170,0.20)");
+      face([P.B, P.C, P.C1, P.B1], glowBC ? "rgba(42,163,154,0.45)" : "rgba(42,163,154,0.16)");
+      face([P.A, P.C, P.C1, P.A1], glowAC ? "rgba(212,137,42,0.40)" : "rgba(212,137,42,0.12)");
+      face([P.A, P.B, P.B1, P.A1], "rgba(240,240,240,0.06)");
+
+      [[P.A, P.C], [P.B, P.C], [P.C, P.C1], [P.A, P.C1]].forEach(([a, b]) => line(a, b, "rgba(200,196,188,0.45)", 1.3, [5, 5]));
+      [[P.A, P.B], [P.A, P.A1], [P.B, P.B1], [P.A1, P.B1], [P.A1, P.C1], [P.B1, P.C1]].forEach(([a, b]) => line(a, b, "#f3efe7", 2));
+
+      if (showAxis) {
+        axis(P.C, [2.45, 0, 0], "#ef8b7a", "x");
+        axis(P.C, [0, 2.45, 0], "#7dcf8a", "y");
+        axis(P.C, [0, 0, 2.45], "#7eb6ef", "z");
+      }
+
+      [["A", P.A, 10, -6], ["B", P.B, 8, 14], ["C", P.C, -18, 16],
+       ["A₁", P.A1, 8, -10], ["B₁", P.B1, 8, -8], ["C₁", P.C1, -22, -8]
+      ].forEach(([n, p, dx, dy]) => {
+        dot(p, "#fff", 3.5);
+        label(p, n, "#f4efe6", dx, dy);
+      });
+
+      if (showDE) {
+        if (step >= 4) {
+          line(P.D, [0, P.D[1], P.D[2]], "#5fd0c8", 1.4, [4, 4]);
+          line(P.E, [0, P.E[1], P.E[2]], "#5fd0c8", 1.4, [4, 4]);
+        }
+        line(P.D, P.E, "#f0c14b", 4);
+        dot(P.D, "#f0c14b", 5);
+        dot(P.E, "#f0c14b", 5);
+        label(P.D, "D", "#f0c14b", 8, 16);
+        label(P.E, "E", "#f0c14b", -18, -6);
+      }
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      canvas.classList.add("drag");
+      lx = e.clientX;
+      ly = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointerup", () => {
+      dragging = false;
+      canvas.classList.remove("drag");
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      yaw += (e.clientX - lx) * 0.008;
+      pitch = Math.max(-0.2, Math.min(1.1, pitch + (e.clientY - ly) * 0.008));
+      lx = e.clientX;
+      ly = e.clientY;
+      draw();
+    });
+
+    playBtn.onclick = toggle;
+    document.getElementById("startPlay").onclick = () => jumpTo(0, true);
+    document.getElementById("replayPlay").onclick = () => jumpTo(0, true);
+    document.getElementById("replayBtn").onclick = () => jumpTo(0, true);
+    seek.addEventListener("pointerdown", () => { seeking = true; });
+    seek.addEventListener("pointerup", () => {
+      seeking = false;
+      jumpTo(Number(seek.value), !voice.paused || voice.ended);
+    });
+    seek.addEventListener("input", () => {
+      const t = Number(seek.value);
+      times.textContent = clock(t) + " / " + clock(cues.duration);
+      setStep(cueAt(t).id);
+    });
+    voice.addEventListener("timeupdate", sync);
+    voice.addEventListener("play", () => {
+      startCard.classList.add("hidden");
+      endCard.classList.add("hidden");
+      playBtn.textContent = "❚❚";
+    });
+    voice.addEventListener("pause", () => { playBtn.textContent = "▶"; });
+    voice.addEventListener("ended", finish);
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        toggle();
+      } else if (e.code === "ArrowRight") {
+        jumpTo((voice.currentTime || 0) + 5, !voice.paused);
+      } else if (e.code === "ArrowLeft") {
+        jumpTo((voice.currentTime || 0) - 5, !voice.paused);
+      }
+    });
+
+    window.addEventListener("resize", resize);
+    renderList();
+    setStep(0);
+    resize();
+    fetch("cues.json").then((r) => r.ok ? r.json() : null).then((data) => {
+      if (!data || !data.steps) return;
+      cues = data;
+      renderList();
+      setStep(cueAt(voice.currentTime || 0).id);
+    }).catch(() => {});
+  </script>
+</body>
+</html>

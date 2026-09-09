@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DeepSeek 出片台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12202b;
+      --panel: #1b2d3a;
+      --line: #314859;
+      --ink: #e8eef3;
+      --mute: #8aa0ae;
+      --cyan: #6fb5b2;
+      --orange: #e8925a;
+      --ok: #7dce9a;
+      --bad: #ef7a6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: "IBM Plex Sans", sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(900px 420px at 88% -10%, rgba(232,146,90,.18), transparent 55%),
+        radial-gradient(700px 380px at -10% 110%, rgba(111,181,178,.16), transparent 50%);
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 22px 72px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
+    h1 { margin: 8px 0 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.03em; }
+    .kicker { color: var(--cyan); letter-spacing: .18em; font-size: 11px; font-family: "IBM Plex Mono", monospace; }
+    .nav { color: var(--mute); font-size: 13px; }
+    .nav a { color: var(--orange); }
+    .grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 20px; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: color-mix(in srgb, var(--panel) 88%, white 0%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    label, .label { display: block; color: var(--mute); font-size: 12px; letter-spacing: .08em; margin: 12px 0 6px; }
+    input, textarea, select {
+      width: 100%;
+      background: #0f1a23;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .presets button, .go {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      padding: 8px 12px;
+    }
+    .presets button.on { border-color: var(--cyan); color: var(--cyan); }
+    .go {
+      width: 100%;
+      margin-top: 16px;
+      background: var(--orange);
+      color: #1a140e;
+      border: 0;
+      font-weight: 600;
+      padding: 14px;
+      border-radius: 12px;
+    }
+    .go:disabled { opacity: .45; cursor: wait; }
+    .key { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--mute); }
+    .key.ok { color: var(--ok); }
+    .key.bad { color: var(--bad); }
+    .preview {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #0b151c;
+    }
+    .log {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      min-height: 220px;
+      max-height: 280px;
+      overflow: auto;
+      white-space: pre-wrap;
+      color: #c5d4de;
+      margin: 0;
+    }
+    .row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .check { display: flex; gap: 8px; align-items: center; margin-top: 14px; color: var(--ink); font-size: 14px; }
+    .check input { width: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="kicker">DEEPSEEK LAB</div>
+        <h1>让 DeepSeek 自己画，直接出 PPTX</h1>
+        <p class="nav">DeepSeek 画页，本机搜一点配图 / 视频 / BGM 再打进 PPT。生成后还能改字。<a href="/">回选版式</a> · <a href="/edit">在线改已生成的稿</a></p>
+      </div>
+      <div class="key" id="keyState">正在读 Key…</div>
+    </header>
+    <div class="grid">
+      <section class="panel">
+        <div class="label">风格预设</div>
+        <div class="presets" id="presets"></div>
+        <label for="title">主题</label>
+        <input id="title" value="2026 新能源销量" />
+        <label for="pages">页数</label>
+        <select id="pages">
+          <option value="4">4 页 · 快测</option>
+          <option value="6">6 页</option>
+          <option value="8" selected>8 页 · 对照刚才那份</option>
+        </select>
+        <label for="style">视觉说明</label>
+        <textarea id="style"></textarea>
+        <label for="facts">材料（数字锁死，模型不许编）</label>
+        <textarea id="facts"></textarea>
+        <label for="extra">额外要求</label>
+        <input id="extra" placeholder="例如：封面要大数字 65.8%，字必须深色" />
+        <label class="check"><input id="stock" type="checkbox" checked /> 自动搜配图、现场视频、BGM</label>
+        <button class="go" id="go" type="button">让 DeepSeek 生成</button>
+      </section>
+      <aside class="panel">
+        <div class="row">
+          <div class="label" style="margin:0">当前页预览</div>
+          <span class="key" id="pageMeta">还没开始</span>
+        </div>
+        <iframe class="preview" id="preview" title="SVG 预览"></iframe>
+        <div class="label">过程</div>
+        <pre class="log" id="log"></pre>
+        <p id="result"></p>
+      </aside>
+    </div>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { preset: "soft-business", presets: {} };
+
+    function log(line) {
+      const el = $("log");
+      el.textContent += line + "\n";
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function boot() {
+      const status = await fetch("/api/deepseek/status").then((r) => r.json());
+      $("keyState").textContent = status.configured ? "本机 Key 已就绪" : "还没有 Key，先写 tools/ppt-studio/.env";
+      $("keyState").className = "key " + (status.configured ? "ok" : "bad");
+      $("facts").value = status.default_facts || "";
+      $("go").disabled = !status.configured;
+      const box = $("presets");
+      box.innerHTML = "";
+      for (const item of status.presets || []) {
+        state.presets[item.id] = item;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = item.name;
+        btn.dataset.id = item.id;
+        btn.onclick = () => pick(item.id);
+        box.appendChild(btn);
+      }
+      pick("soft-business");
+    }
+
+    const STYLE = {
+      "soft-business": `主色：浅灰蓝、淡青、柔和橙。
+背景：浅灰蓝到淡青渐变。
+装饰：白色/浅灰半透明圆和椭圆，柔阴影。
+强调色给标题句、数字和柱状图。
+字体无衬线。浅底必须深色字，禁止浅灰字。
+现代、简约、商务、科技但柔和。`,
+      campus: `校园学院风。奶油纸、酒红书脊、金细线、宋体标题。像学期研报，不要玻璃。深色字。`,
+      glass: `深色玻璃。深底、半透明卡片、亮青数字。克制科技感。标题浅色只写在深底上。`,
+    };
+
+    function pick(id) {
+      state.preset = id;
+      for (const btn of document.querySelectorAll(".presets button")) {
+        btn.classList.toggle("on", btn.dataset.id === id);
+      }
+      $("style").value = STYLE[id] || $("style").value;
+    }
+
+    $("go").onclick = async () => {
+      $("go").disabled = true;
+      $("result").innerHTML = "";
+      $("log").textContent = "";
+      log("开始请求 DeepSeek…");
+      const payload = {
+        title: $("title").value,
+        preset: state.preset,
+        style: $("style").value,
+        facts: $("facts").value,
+        extra: $("extra").value,
+        pages: Number($("pages").value),
+        stock: $("stock").checked,
+      };
+      const resp = await fetch("/api/deepseek", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok || !resp.body) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        log("失败：" + (err.error || resp.status));
+        $("go").disabled = false;
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const chunks = buf.split("\n\n");
+        buf = chunks.pop() || "";
+        for (const chunk of chunks) {
+          const line = chunk.split("\n").filter((x) => x.startsWith("data:")).map((x) => x.slice(5).trim()).join("");
+          if (!line) continue;
+          let msg = {};
+          try { msg = JSON.parse(line); } catch { log(line); continue; }
+          handle(msg);
+        }
+      }
+      $("go").disabled = false;
+    };
+
+    function handle(msg) {
+      if (msg.event === "status") log(msg.text);
+      if (msg.event === "plan") log("页纲：" + (msg.pages || []).join(" · "));
+      if (msg.event === "page") {
+        $("pageMeta").textContent = msg.file + "  " + msg.index + "/" + msg.total;
+        log("完成 " + msg.file);
+        if (msg.preview) $("preview").src = msg.preview;
+      }
+      if (msg.event === "check") {
+        const n = (msg.errors || []).length;
+        log(n ? ("检查挡住 " + n + " 条") : "检查通过");
+      }
+      if (msg.event === "media") log("素材：" + msg.text);
+      if (msg.event === "done") {
+        log("导出完成 " + msg.download);
+        const bits = [];
+        if (msg.media) {
+          if (msg.media.photos) bits.push(msg.media.photos + " 张图");
+          if (msg.media.video) bits.push("视频");
+          if (msg.media.music) bits.push("BGM");
+        }
+        const extra = bits.length ? "（含 " + bits.join(" · ") + "）" : "";
+        const edit = msg.edit ? ' · <a class="dl" href="' + msg.edit + '">在线改字</a>' : "";
+        $("result").innerHTML = '<a class="dl" href="' + msg.download + '">下载 ' + msg.slides + ' 页 PPTX</a>' + extra + edit;
+      }
+      if (msg.event === "error") {
+        log("出错：" + msg.error);
+        $("result").innerHTML = '<span style="color:var(--bad)">' + msg.error + "</span>";
+      }
+    }
+
+    boot().catch((err) => {
+      $("keyState").textContent = String(err);
+      $("keyState").className = "key bad";
+    });
+  </script>
+</body>
+</html>

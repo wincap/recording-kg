@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>在幻灯片上改</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#12202b; --panel:#1b2d3a; --line:#314859; --ink:#e8eef3; --mute:#8aa0ae; --cyan:#6fb5b2; --orange:#e8925a; --ok:#7dce9a; --bad:#ef7a6b; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+    body {
+      min-height: 100vh;
+      background-image:
+        radial-gradient(900px 420px at 88% -10%, rgba(232,146,90,.18), transparent 55%),
+        radial-gradient(700px 380px at -10% 110%, rgba(111,181,178,.16), transparent 50%);
+    }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 20px 18px 48px; }
+    h1 { margin: 6px 0 0; font-size: 26px; }
+    .kicker { color: var(--cyan); letter-spacing: .16em; font-size: 11px; font-family: "IBM Plex Mono", monospace; }
+    a { color: var(--orange); }
+    .hint { color: var(--mute); font-size: 13px; }
+    .jobs { display: grid; gap: 8px; margin-top: 16px; }
+    .jobs a { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--ink); background: var(--panel); }
+    .layout { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; }
+    .rail button { display: block; width: 100%; text-align: left; margin-bottom: 6px; background: #0f1a23; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; }
+    .rail button.on { border-color: var(--cyan); color: var(--cyan); }
+    .stage-wrap { position: relative; background: #0b151c; border-radius: 12px; overflow: hidden; }
+    .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+    .stage svg { width: 100%; height: 100%; display: block; }
+    .stage svg text, .stage svg tspan { cursor: text; }
+    .on-slide {
+      position: absolute;
+      margin: 0;
+      padding: 0 6px;
+      border: 1.5px dashed var(--orange);
+      background: transparent;
+      caret-color: var(--orange);
+      outline: none;
+      z-index: 3;
+      line-height: 1.15;
+    }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+    .go {
+      background: var(--orange); color: #1a140e; border: 0; border-radius: 12px;
+      padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .ghost { background: transparent; color: var(--cyan); border: 1px solid var(--line); }
+    .status { min-height: 1.3em; font-size: 12px; color: var(--ok); font-family: "IBM Plex Mono", monospace; flex: 1; }
+    .status.bad { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">ON SLIDE</div>
+    <h1 id="title">在幻灯片上改</h1>
+    <p class="hint">点画面上的字就能改，改完 ⌘S 或点保存。不要把字抽到旁边的框里。<a href="/deepseek">回出片台</a></p>
+    <div id="picker"></div>
+    <div class="layout" id="editor" hidden>
+      <nav class="panel rail" id="rail"></nav>
+      <section>
+        <div class="stage-wrap"><div class="stage" id="stage"></div></div>
+        <div class="bar">
+          <button class="go ghost" id="savePage" type="button">保存这一页</button>
+          <button class="go" id="exportAll" type="button">导出 PPTX</button>
+          <p class="status" id="status">点字直接改</p>
+          <p id="download"></p>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const jobId = new URLSearchParams(location.search).get("job") || "";
+    let job = null;
+    let index = 0;
+    let dirty = false;
+    let editor = null;
+
+    function setStatus(text, bad) {
+      $("status").textContent = text;
+      $("status").className = "status" + (bad ? " bad" : "");
+    }
+
+    async function boot() {
+      if (!jobId) {
+        const data = await fetch("/api/jobs").then((r) => r.json());
+        const box = $("picker");
+        if (!data.jobs || !data.jobs.length) {
+          box.innerHTML = "<p class='hint'>还没有生成过的稿。先去出片台做一份。</p>";
+          return;
+        }
+        box.innerHTML = "<div class='jobs'>" + data.jobs.map((j) =>
+          `<a href="/edit?job=${encodeURIComponent(j.id)}">${esc(j.title)} · ${j.slides} 页</a>`
+        ).join("") + "</div>";
+        return;
+      }
+      const data = await fetch("/api/job/" + encodeURIComponent(jobId)).then((r) => r.json());
+      if (!data.ok) { setStatus(data.error || "打不开这份稿", true); return; }
+      job = data;
+      $("title").textContent = data.title;
+      $("editor").hidden = false;
+      const rail = $("rail");
+      rail.innerHTML = "";
+      data.slides.forEach((slide, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = (i + 1) + "  " + slide.file.replace(".svg", "");
+        btn.onclick = async () => {
+          if (dirty && !(await maybeSave())) return;
+          show(i);
+        };
+        rail.appendChild(btn);
+      });
+      show(0);
+    }
+
+    function ownText(el) {
+      return [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.nodeValue).join("");
+    }
+
+    function setOwnText(el, value) {
+      const node = [...el.childNodes].find((n) => n.nodeType === 3);
+      if (node) node.nodeValue = value;
+      else if (![...el.children].length) el.textContent = value;
+    }
+
+    function textNodes(root) {
+      return [...root.querySelectorAll("text, tspan")].filter((el) => ownText(el).trim());
+    }
+
+    function closeEditor(commit) {
+      if (!editor) return;
+      const { input, el, original } = editor;
+      if (commit) {
+        const next = input.value;
+        if (next !== original) {
+          setOwnText(el, next);
+          dirty = true;
+          setStatus("未保存");
+        }
+      }
+      el.style.opacity = "";
+      input.remove();
+      editor = null;
+    }
+
+    function openEditor(el) {
+      closeEditor(true);
+      const stage = $("stage");
+      const stageRect = stage.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
+      const input = document.createElement(ownText(el).length > 28 ? "textarea" : "input");
+      input.className = "on-slide";
+      input.value = ownText(el);
+      const scale = stageRect.width / 1280;
+      const size = parseFloat(el.getAttribute("font-size") || "18") * scale;
+      const anchor = el.getAttribute("text-anchor") || "start";
+      input.style.left = (rect.left - stageRect.left - 4) + "px";
+      input.style.top = (rect.top - stageRect.top - 3) + "px";
+      input.style.minWidth = Math.max(rect.width + 16, 72) + "px";
+      input.style.fontSize = Math.max(size, 12) + "px";
+      input.style.color = el.getAttribute("fill") || "#1A2430";
+      input.style.fontWeight = el.getAttribute("font-weight") || "400";
+      input.style.fontFamily = el.getAttribute("font-family") || "Microsoft YaHei, PingFang SC, sans-serif";
+      input.style.textAlign = anchor === "middle" ? "center" : anchor === "end" ? "right" : "left";
+      if (input.tagName === "TEXTAREA") input.style.height = Math.max(rect.height + 10, 36) + "px";
+      el.style.opacity = "0";
+      stage.appendChild(input);
+      editor = { input, el, original: ownText(el) };
+      input.focus();
+      input.select();
+      input.onkeydown = (ev) => {
+        if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); closeEditor(true); }
+        if (ev.key === "Escape") { ev.preventDefault(); input.value = editor.original; closeEditor(false); el.style.opacity = ""; }
+      };
+      input.onblur = () => closeEditor(true);
+    }
+
+    async function show(i) {
+      closeEditor(false);
+      index = i;
+      [...$("rail").children].forEach((btn, n) => btn.classList.toggle("on", n === i));
+      const slide = job.slides[i];
+      const raw = await fetch(slide.preview + "?t=" + Date.now()).then((r) => r.text());
+      const doc = new DOMParser().parseFromString(raw, "image/svg+xml");
+      const svg = doc.documentElement;
+      const base = location.origin + "/api/svg/" + encodeURIComponent(jobId) + "/svg_output/";
+      svg.querySelectorAll("image").forEach((img) => {
+        const href = img.getAttribute("href") || img.getAttributeNS("http://www.w3.org/1999/xlink", "href") || "";
+        if (href && !/^(https?:|data:|\/)/.test(href)) img.setAttribute("href", base + href);
+      });
+      const stage = $("stage");
+      stage.innerHTML = "";
+      stage.appendChild(document.importNode(svg, true));
+      textNodes(stage).forEach((el) => {
+        el.addEventListener("click", (ev) => { ev.stopPropagation(); openEditor(el); });
+      });
+      stage.onclick = () => closeEditor(true);
+      dirty = false;
+      setStatus("点字直接改");
+    }
+
+    function serializeSvg() {
+      closeEditor(true);
+      const svg = $("stage").querySelector("svg");
+      if (!svg) return "";
+      const clone = svg.cloneNode(true);
+      clone.querySelectorAll("image").forEach((img) => {
+        const href = img.getAttribute("href") || "";
+        const name = href.split("/").pop().split("?")[0];
+        if (name) img.setAttribute("href", decodeURIComponent(name));
+      });
+      return new XMLSerializer().serializeToString(clone);
+    }
+
+    async function savePage() {
+      const slide = job.slides[index];
+      const resp = await fetch("/api/job/" + encodeURIComponent(jobId) + "/page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: slide.file, svg: serializeSvg() }),
+      });
+      return resp.json();
+    }
+
+    async function maybeSave() {
+      const data = await savePage();
+      if (!data.ok) { setStatus(data.error || "保存失败", true); return false; }
+      dirty = false;
+      job.slides[index]._raw = null;
+      return true;
+    }
+
+    $("savePage").onclick = async () => {
+      setStatus("保存中…");
+      if (!(await maybeSave())) return;
+      setStatus("这一页已写入");
+    };
+
+    $("exportAll").onclick = async () => {
+      setStatus("保存并导出…");
+      $("download").innerHTML = "";
+      if (!(await maybeSave())) return;
+      const resp = await fetch("/api/job/" + encodeURIComponent(jobId) + "/export", { method: "POST" });
+      const data = await resp.json();
+      if (!data.ok) { setStatus(data.error || "导出失败", true); return; }
+      setStatus("已导出");
+      $("download").innerHTML = '<a href="' + data.download + '">下载 PPTX</a>';
+    };
+
+    document.addEventListener("keydown", (ev) => {
+      if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "s") {
+        ev.preventDefault();
+        $("savePage").click();
+      }
+    });
+
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    boot().catch((err) => setStatus(String(err), true));
+  </script>
+</body>
+</html>

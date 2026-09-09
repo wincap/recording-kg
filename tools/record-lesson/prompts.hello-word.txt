@@ -1,0 +1,6 @@
+@expect hello word
+在当前项目新建 hello_word.py。
+必须在编辑器里打开这个文件，让人看见写入这一行：
+print("hello word ")
+保存后立刻在终端执行：python3 hello_word.py
+把终端完整输出发回来。不要改其他文件。

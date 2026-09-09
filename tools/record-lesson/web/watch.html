@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>课场 · 学生学习端</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Libre+Bodoni:opsz,wght@6..72,500;6..72,600;6..72,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0F172A;
+      --mute: #64748B;
+      --paper: #F4F1EC;
+      --stage: #0B0F14;
+      --course: #C47B1A;
+      --tutor: #0F766E;
+      --line: #E2DDD4;
+      --rail: #FAF8F5;
+      --surface: #FFFFFF;
+      --stage-elev: #121821;
+      --stage-line: #243041;
+      --danger: #B42318;
+      --serif: "Libre Bodoni", "Songti SC", Georgia, serif;
+      --sans: "Public Sans", "PingFang SC", "Helvetica Neue", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --chapters-w: 220px;
+      --study-w: 340px;
+      --study-collapsed: 48px;
+      --bar-h: 56px;
+      --radius: 10px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, select, textarea, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    .hidden { display: none !important; }
+    :focus { outline: none; }
+    :focus-visible {
+      outline: 2px solid var(--course);
+      outline-offset: 2px;
+    }
+    body.mode-tutor :focus-visible { outline-color: var(--tutor); }
+
+    .icon {
+      width: 1em; height: 1em;
+      display: inline-block;
+      vertical-align: -0.125em;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .icon-fill { fill: currentColor; stroke: none; }
+
+    /* —— App shell —— */
+    .app {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: var(--bar-h) minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      z-index: 20;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .brand-mark {
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .brand-tag {
+      font-size: 11px;
+      color: var(--mute);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .top-mid {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .course-title {
+      font-family: var(--serif);
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .progress-chip {
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--mute);
+      font-variant-numeric: tabular-nums;
+      padding: 4px 0;
+      border-left: 1px solid var(--line);
+      padding-left: 14px;
+    }
+    .progress-chip strong { color: var(--ink); font-weight: 600; }
+    .course-switch {
+      flex-shrink: 0;
+      max-width: 220px;
+      height: 34px;
+      padding: 0 28px 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--rail) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+      appearance: none;
+      font-size: 12px;
+      color: var(--ink);
+    }
+    .studio-link {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--mute);
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: color 160ms var(--ease), background 160ms var(--ease);
+    }
+    .studio-link:hover { color: var(--ink); background: var(--rail); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: var(--chapters-w) minmax(0, 1fr) var(--study-w);
+      min-height: 0;
+      height: 100%;
+    }
+    .workspace.study-collapsed {
+      grid-template-columns: var(--chapters-w) minmax(0, 1fr) var(--study-collapsed);
+    }
+
+    /* —— Chapters rail —— */
+    .chapters-rail {
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px 10px;
+    }
+    .rail-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mute);
+      padding: 0 8px 10px;
+    }
+    .ch-list {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 2px;
+    }
+    .ch {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      align-items: start;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: var(--ink);
+      transition: background 140ms var(--ease);
+    }
+    .ch:hover { background: rgba(15, 23, 42, 0.04); }
+    .ch.on {
+      background: var(--ink);
+      color: #F8F5F0;
+    }
+    .ch .n {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--mute);
+      padding-top: 2px;
+    }
+    .ch.on .n { color: rgba(248, 245, 240, 0.55); }
+    .ch .ttl {
+      font-size: 13px;
+      font-weight: 550;
+      line-height: 1.35;
+    }
+    .ch .meta {
+      font-size: 11px;
+      color: var(--mute);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+    .ch.on .meta { color: rgba(248, 245, 240, 0.62); }
+    .ch .bar {
+      margin-top: 8px;
+      height: 2px;
+      background: rgba(100, 116, 139, 0.25);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .ch.on .bar { background: rgba(248, 245, 240, 0.18); }
+    .ch .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--course);
+      border-radius: 1px;
+    }
+    .ch.on .bar > i { background: var(--course); }
+    .ch.ready .bar > i { width: 100%; opacity: 0.85; }
+    .ch:not(.ready) .bar > i { width: 18%; opacity: 0.4; }
+
+    /* —— Theater —— */
+    .theater {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 14px 14px;
+      overflow: auto;
+      background:
+        linear-gradient(180deg, #EDE9E2 0%, var(--paper) 48%);
+    }
+
+    .mode-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      border: 1px solid transparent;
+      animation: bannerIn 280ms var(--ease);
+    }
+    body.mode-tutor .mode-banner {
+      display: flex;
+      background: rgba(15, 118, 110, 0.08);
+      border-color: rgba(15, 118, 110, 0.28);
+      color: #0A4F49;
+    }
+    body.mode-tutor .mode-banner .strip {
+      width: 3px;
+      align-self: stretch;
+      background: var(--tutor);
+      border-radius: 2px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .mode-banner .msg {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .mode-banner .msg strong { font-weight: 600; }
+    .mode-banner .cta {
+      flex-shrink: 0;
+      border: 0;
+      background: var(--tutor);
+      color: #F4FFFD;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .mode-banner .cta:hover { filter: brightness(1.06); }
+
+    .player {
+      background: var(--stage);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #1A222C;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: radial-gradient(ellipse 75% 55% at 50% 42%, #151C26 0%, var(--stage) 72%);
+      overflow: hidden;
+    }
+    .stage video,
+    .stage img.slide-img,
+    .stage .slide-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: var(--stage);
+      border: 0;
+    }
+    .stage .slide-frame { background: #111821; }
+    .stage .title-card {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      color: #F4F1EC;
+      font-family: var(--serif);
+      font-size: clamp(22px, 3.2vw, 32px);
+      text-align: center;
+      background: linear-gradient(165deg, #151C26, #0D1218);
+    }
+
+    .badge, .page-chip {
+      position: absolute;
+      z-index: 4;
+      top: 12px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: rgba(11, 15, 20, 0.78);
+      color: #E8EEF5;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+    .badge {
+      left: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+    }
+    .badge[data-kind="slides"] { color: #93B4E8; }
+    .badge[data-kind="video"] { color: #E8A87A; }
+    .badge[data-kind="audio"] { color: #8FCBB0; }
+    .badge[data-kind="tutor"] { color: #5EC4B8; }
+    .badge[data-kind="idle"] { color: #94A3B8; }
+    .badge[data-kind="loading"] { color: #E8C07A; }
+    .page-chip { right: 12px; }
+
+    .ask-float {
+      position: absolute;
+      z-index: 5;
+      top: 12px;
+      right: 12px;
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 550;
+      cursor: pointer;
+      background: rgba(244, 241, 236, 0.94);
+      color: var(--ink);
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    body.mode-course .stage[data-has-code="1"] .ask-float { display: inline-flex; }
+    body.mode-tutor .ask-float { display: none !important; }
+    .stage[data-has-code="1"] .page-chip { right: 118px; }
+
+    /* Course ↔ tutor crossfade */
+    .course-layer, .tutor-stage {
+      position: absolute;
+      inset: 0;
+      transition: opacity 320ms var(--ease), visibility 320ms var(--ease);
+    }
+    .course-layer {
+      opacity: 1;
+      visibility: visible;
+    }
+    .tutor-stage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #0B1017;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    body.mode-tutor .course-layer {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    body.mode-tutor .tutor-stage {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .tutor-pane {
+      min-width: 0;
+      overflow: auto;
+      padding: 14px 14px 18px;
+      border-right: 1px solid var(--stage-line);
+    }
+    .tutor-pane:last-child {
+      border-right: 0;
+      background: #101821;
+    }
+    .tutor-pane h3 {
+      margin: 0 0 10px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #9DB0C3;
+      font-weight: 600;
+    }
+    .code-view {
+      margin: 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      color: #E7EEF7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0A0E14;
+      border: 1px solid var(--stage-line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .code-view .ln {
+      display: inline-block;
+      width: 2.2em;
+      color: #66788A;
+      user-select: none;
+    }
+    .md-view { color: #E8EEF5; font-size: 13px; line-height: 1.65; }
+    .md-view h1, .md-view h2, .md-view h3 {
+      font-family: var(--serif);
+      margin: 0.65em 0 0.35em;
+      font-weight: 600;
+    }
+    .md-view pre {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #0A0E14;
+      border: 1px solid var(--stage-line);
+      border-radius: 8px;
+      padding: 10px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .md-view code { font-family: var(--mono); font-size: 0.92em; }
+    .md-view ul { padding-left: 1.2em; }
+    .tutor-img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--stage-line);
+    }
+    .tutor-pane.focus-on {
+      outline: 2px solid rgba(15, 118, 110, 0.55);
+      outline-offset: -2px;
+    }
+
+    /* Stage loading overlay */
+    .stage-loading {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(11, 15, 20, 0.82);
+      color: #F4F1EC;
+      backdrop-filter: blur(4px);
+    }
+    .stage-loading.on { display: flex; }
+    .stage-loading .shimmer {
+      width: min(280px, 56%);
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(
+        90deg,
+        rgba(196, 123, 26, 0.15) 0%,
+        rgba(196, 123, 26, 0.85) 45%,
+        rgba(15, 118, 110, 0.7) 55%,
+        rgba(196, 123, 26, 0.15) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite;
+    }
+    .stage-loading p {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Transport */
+    .transport {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 12px 8px;
+      background: var(--stage-elev);
+      border-top: 1px solid #1E2733;
+    }
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #243041;
+      color: #F4F1EC;
+      flex-shrink: 0;
+    }
+    .btn-icon.primary {
+      background: #F4F1EC;
+      color: var(--stage);
+    }
+    .btn-icon.primary:hover { filter: brightness(0.96); }
+    .btn-icon.mic {
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+    }
+    .btn-icon.mic.listening {
+      background: var(--danger);
+      animation: micPulse 1.1s ease-in-out infinite;
+    }
+    .speed {
+      height: 34px;
+      border: 1px solid #314155;
+      background: #1A2430;
+      color: #E8EEF5;
+      border-radius: 6px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .scrub {
+      flex: 1;
+      min-width: 100px;
+      height: 4px;
+      accent-color: var(--course);
+      cursor: pointer;
+    }
+    .scrub:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      accent-color: #475569;
+    }
+    .clock {
+      color: #9AA8B8;
+      font-size: 12px;
+      min-width: 92px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono);
+    }
+
+    .tutor-bar-wrap {
+      display: none;
+      padding: 0 12px 10px;
+      background: var(--stage-elev);
+      gap: 8px;
+      align-items: center;
+    }
+    body.mode-tutor .tutor-bar-wrap { display: flex; }
+    .tutor-bar-wrap label {
+      color: #5EC4B8;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .tutor-scrub { flex: 1; accent-color: var(--tutor); height: 4px; }
+
+    .tutor-actions {
+      display: none;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 0 12px 12px;
+      background: var(--stage-elev);
+    }
+    body.mode-tutor .tutor-actions { display: flex; }
+    .tutor-actions button {
+      border: 1px solid #314155;
+      background: #1A2430;
+      color: #E8EEF5;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    .tutor-actions button:hover { border-color: #4A6078; }
+
+    .clip-rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 12px 0 0;
+    }
+    .clip-rail button {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 8px 11px;
+      text-align: left;
+      transition: border-color 140ms var(--ease), background 140ms var(--ease);
+    }
+    .clip-rail button:hover { border-color: #C9C2B6; }
+    .clip-rail button .clip-title { font-size: 13px; font-weight: 600; }
+    .clip-rail button .clip-kind { font-size: 11px; color: var(--mute); }
+    .clip-rail button.on {
+      background: var(--ink);
+      color: #F8F5F0;
+      border-color: var(--ink);
+    }
+    .clip-rail button.on .clip-kind { color: rgba(248, 245, 240, 0.7); }
+
+    .state-line {
+      color: var(--mute);
+      font-size: 12px;
+      margin: 10px 0 0;
+    }
+    .empty-panel {
+      margin-top: 12px;
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--mute);
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.45);
+    }
+    .empty-panel h3 {
+      margin: 0 0 6px;
+      font-family: var(--serif);
+      font-size: 18px;
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .empty-panel p { margin: 0; font-size: 13px; }
+    .error-banner {
+      display: none;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+      font-size: 13px;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .error-banner.on { display: flex; }
+    .error-banner button {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+      opacity: 0.7;
+    }
+
+    /* —— Study panel —— */
+    .study {
+      background: var(--surface);
+      border-left: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px;
+    }
+    .study-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .study-head h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .study-head .helper {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--mute);
+      line-height: 1.4;
+    }
+    .collapse-btn {
+      border: 1px solid var(--line);
+      background: var(--rail);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      color: var(--mute);
+      flex-shrink: 0;
+    }
+    .workspace.study-collapsed .study {
+      padding: 10px 8px;
+      align-items: center;
+    }
+    .workspace.study-collapsed .study-body,
+    .workspace.study-collapsed .study-head .titles { display: none; }
+    .workspace.study-collapsed .collapse-btn { transform: scaleX(-1); }
+
+    .study-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .chat-log {
+      flex: 1;
+      overflow: auto;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--rail);
+    }
+    .chat-log:empty::before {
+      content: "还没有学习记录。提问、上传报错或代码后，答疑会出现在主舞台。";
+      display: block;
+      padding: 16px;
+      font-size: 12px;
+      color: var(--mute);
+      line-height: 1.5;
+    }
+    .chat-log li {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .chat-log li:last-child { border-bottom: 0; }
+    .chat-log .q { color: var(--ink); font-weight: 550; }
+    .chat-log .a { color: var(--mute); margin-top: 4px; }
+
+    .compose {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    .compose-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--mute);
+    }
+    .compose textarea {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #FFFCFA;
+      line-height: 1.45;
+    }
+    .compose textarea:focus {
+      border-color: #C9B89A;
+      box-shadow: 0 0 0 3px rgba(196, 123, 26, 0.12);
+    }
+    .compose-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .tool-btn, .file-btn {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--ink);
+    }
+    .file-btn { cursor: pointer; }
+    .send-btn {
+      border: 0;
+      background: var(--ink);
+      color: #F8F5F0;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .send-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .hold {
+      width: 52px;
+      height: 52px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #F8F5F0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .hold .icon { width: 16px; height: 16px; }
+    .hold .hold-label {
+      font-size: 9px;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+    .hold.listening {
+      background: var(--danger);
+      animation: micPulse 1.1s ease-in-out infinite;
+    }
+    .hold:disabled { opacity: 0.45; cursor: not-allowed; }
+    .coach-meta {
+      margin: 0;
+      font-size: 11px;
+      color: var(--mute);
+      min-height: 1.2em;
+    }
+
+    /* Toast */
+    .toast-host {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      width: min(420px, calc(100% - 32px));
+    }
+    .toast {
+      pointer-events: auto;
+      background: var(--ink);
+      color: #F8F5F0;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      animation: toastIn 240ms var(--ease);
+    }
+    .toast.error { background: #7F1D1D; }
+    .toast .toast-x {
+      margin-left: auto;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      padding: 0;
+      line-height: 1;
+    }
+
+    /* Modal */
+    .modal-back {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 20, 0.52);
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-back.on { display: flex; }
+    .modal {
+      width: min(520px, 100%);
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.2);
+    }
+    .modal h3 {
+      margin: 0 0 10px;
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .modal textarea {
+      width: 100%;
+      min-height: 100px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #FFFCFA;
+    }
+    .modal .row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .modal .row button {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+    }
+    .modal .row button.primary {
+      background: var(--ink);
+      color: #F8F5F0;
+      border-color: var(--ink);
+    }
+
+    .boot {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #94A3B8;
+      font-size: 13px;
+      gap: 10px;
+      text-align: center;
+      padding: 24px;
+    }
+    .boot .shimmer {
+      width: 160px;
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #1a2332, #C47B1A, #1a2332);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.45); }
+      50% { box-shadow: 0 0 0 10px rgba(180, 35, 24, 0); }
+    }
+    @keyframes bannerIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .btn-icon.mic.listening,
+      .hold.listening { box-shadow: none; }
+    }
+
+    @media (max-width: 960px) {
+      .app { height: auto; min-height: 100dvh; overflow: visible; }
+      .topbar {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: var(--bar-h);
+        padding: 10px 14px;
+        gap: 10px;
+      }
+      .top-mid { flex-wrap: wrap; width: 100%; order: 3; }
+      .course-switch { max-width: none; flex: 1; }
+      .workspace,
+      .workspace.study-collapsed {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .chapters-rail {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        max-height: 200px;
+      }
+      .ch-list { flex-direction: row; overflow-x: auto; gap: 6px; }
+      .ch { min-width: 160px; grid-template-columns: 22px 1fr; }
+      .theater { overflow: visible; }
+      .player { position: relative; }
+      .study {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        min-height: 360px;
+      }
+      .workspace.study-collapsed .study {
+        min-height: 0;
+        flex-direction: row;
+        justify-content: flex-end;
+      }
+      .tutor-stage { grid-template-columns: 1fr; }
+      .tutor-pane { border-right: 0; border-bottom: 1px solid var(--stage-line); max-height: 40%; }
+      .tutor-pane:last-child { border-bottom: 0; max-height: none; }
+    }
+  </style>
+</head>
+<body class="mode-course">
+  <div class="app" id="app">
+    <header class="topbar">
+      <a class="brand" href="/watch" title="课场">
+        <span class="brand-mark">课场</span>
+        <span class="brand-tag">Course</span>
+      </a>
+      <div class="top-mid">
+        <h1 class="course-title" id="title">加载课程…</h1>
+        <div class="progress-chip" id="progressChip">章节 <strong id="progressText">—</strong></div>
+        <select class="course-switch" id="courses" aria-label="切换课程"></select>
+      </div>
+      <a class="studio-link" href="/">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        导播台
+      </a>
+    </header>
+
+    <div class="workspace" id="shell">
+      <aside class="chapters-rail" aria-label="章节列表">
+        <div class="rail-label">章节</div>
+        <div class="ch-list" id="chapters"></div>
+      </aside>
+
+      <section class="theater" aria-label="课程舞台">
+        <div class="error-banner" id="errorBanner" role="alert">
+          <span id="errorText"></span>
+          <button type="button" id="errorClose" aria-label="关闭">×</button>
+        </div>
+
+        <div class="mode-banner" id="banner">
+          <span class="strip" aria-hidden="true"></span>
+          <div class="msg">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/></svg>
+            <span><strong>课程已暂停</strong> · 正在答疑讲解，结束后可继续正式课程</span>
+          </div>
+          <button type="button" class="cta" id="btnBackCourse">返回正式课程</button>
+        </div>
+
+        <div class="player" id="playerShell">
+          <div class="stage" id="stage" data-has-code="0">
+            <div class="badge" id="kindBadge" data-kind="idle">
+              <span class="dot"></span>
+              <span id="kindLabel">准备就绪</span>
+            </div>
+            <div class="page-chip hidden" id="pageChip">1 / 1</div>
+            <button type="button" class="ask-float" id="askCode">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/></svg>
+              向 AI 提问
+            </button>
+
+            <div class="course-layer" id="courseLayer">
+              <div class="boot" id="bootOverlay">
+                <div class="shimmer" aria-hidden="true"></div>
+                <span>正在载入课程…</span>
+              </div>
+              <video id="video" class="hidden" playsinline></video>
+              <img id="slide" class="slide-img hidden" alt="" />
+              <iframe id="slideFrame" class="slide-frame hidden" title="slide"></iframe>
+              <div id="titleCard" class="title-card hidden">本集</div>
+            </div>
+
+            <div class="tutor-stage" id="tutorStage">
+              <div class="tutor-pane" id="tutorStudent">
+                <h3 id="assetTitle">学生提交素材</h3>
+                <div id="assetBody"></div>
+              </div>
+              <div class="tutor-pane" id="tutorLecture">
+                <h3>AI 解析讲义</h3>
+                <div class="md-view" id="lectureBody"></div>
+              </div>
+            </div>
+
+            <div class="stage-loading" id="stageLoading" aria-live="polite">
+              <div class="shimmer" aria-hidden="true"></div>
+              <p>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/></svg>
+                正在生成答疑讲义…
+              </p>
+            </div>
+          </div>
+
+          <div class="transport">
+            <button type="button" class="btn-icon primary" id="toggle" aria-label="播放">
+              <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><polygon class="icon-fill" points="8 5 19 12 8 19 8 5"/></svg>
+              <svg class="icon icon-pause hidden" viewBox="0 0 24 24" aria-hidden="true"><rect class="icon-fill" x="6" y="5" width="4" height="14"/><rect class="icon-fill" x="14" y="5" width="4" height="14"/></svg>
+            </button>
+            <select class="speed" id="speed" aria-label="倍速">
+              <option value="1">1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+            <input class="scrub" id="scrub" type="range" min="0" max="0" step="0.05" value="0" aria-label="课程进度" />
+            <span class="clock" id="clock">00:00 / 00:00</span>
+            <button type="button" class="btn-icon mic" id="micTop" title="按住语音提问" aria-label="语音助手">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+            </button>
+          </div>
+          <div class="tutor-bar-wrap">
+            <label for="tutorScrub">答疑进度</label>
+            <input class="tutor-scrub" id="tutorScrub" type="range" min="0" max="16" step="0.05" value="0" />
+            <span class="clock" id="tutorClock">00:00 / 00:16</span>
+          </div>
+          <div class="tutor-actions">
+            <button type="button" id="btnReplayTutor">重放本次答疑</button>
+            <button type="button" id="btnSaveNote">保存为本学习笔记</button>
+            <button type="button" id="btnBackCourse2">返回正式课程</button>
+          </div>
+        </div>
+
+        <div class="clip-rail" id="rail"></div>
+        <p class="state-line" id="stateLine">选择章节后开始学习</p>
+        <div class="empty-panel hidden" id="empty">
+          <h3>本章暂无可播内容</h3>
+          <p>该章节尚未出片，请选择其他章节，或稍后再来。</p>
+        </div>
+      </section>
+
+      <aside class="study" id="chat" aria-label="学习记录">
+        <div class="study-head">
+          <div class="titles">
+            <h2>学习记录</h2>
+            <p class="helper">提问会进入答疑舞台；记录仅保存在本机与课程笔记中。</p>
+          </div>
+          <button type="button" class="collapse-btn" id="toggleChat" title="收起面板" aria-label="收起学习记录">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="study-body chat-body">
+          <ul class="chat-log" id="coachLog"></ul>
+          <div class="compose chat-compose">
+            <div class="compose-label">提问与素材</div>
+            <textarea id="coachText" placeholder="粘贴报错、代码，或描述你的问题…（⌘/Ctrl + Enter 发送）" aria-label="提问内容"></textarea>
+            <div class="compose-tools chat-tools">
+              <label class="file-btn file">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                上传素材
+                <input id="fileUp" type="file" accept=".py,.js,.ts,.txt,.log,.md,.png,.jpg,.jpeg,.webp,.gif,text/*" hidden />
+              </label>
+              <button type="button" id="coachSend" class="send-btn">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                发送并答疑
+              </button>
+              <button type="button" class="hold" id="holdTalk" title="按住说话" aria-label="按住说话">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+                <span class="hold-label" id="holdLabel">按住</span>
+              </button>
+            </div>
+            <p class="coach-meta state" id="coachMeta"></p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast-host" id="toastHost" aria-live="polite"></div>
+
+  <div class="modal-back" id="askModal">
+    <div class="modal" role="dialog" aria-labelledby="askModalTitle">
+      <h3 id="askModalTitle">就这段代码向 AI 提问</h3>
+      <pre class="code-view" id="askCodePreview" style="max-height:140px;overflow:auto;margin-bottom:8px"></pre>
+      <textarea id="askExtra" placeholder="补充你的问题，例如：这里为什么报 422？"></textarea>
+      <div class="row">
+        <button type="button" id="askCancel">取消</button>
+        <button type="button" class="primary" id="askGo">进入答疑</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio" class="hidden"></audio>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    let slug = params.get("slug") || "";
+    let currentChapter = null;
+    let wasPlayingBeforeTalk = false;
+    let pendingAsset = { kind: "text", content: "", image_data_url: "", title: "" };
+    let courseCodeCtx = "";
+    let chapterTotal = 0;
+
+    const KIND_LABEL = {
+      slides: "幻灯片 + 口播",
+      video: "录屏视频",
+      audio: "口播音频",
+      tutor: "答疑主舞台",
+      idle: "准备就绪",
+      loading: "正在生成答疑",
+    };
+
+    const machine = {
+      clips: [], t: 0, playing: false, clipIndex: -1, pageIndex: -1,
+      mode: "idle", seeking: false, raf: 0, lastTick: 0, rate: 1,
+    };
+
+    const tutor = {
+      active: false,
+      resumeT: 0,
+      resumePlaying: false,
+      payload: null,
+      t: 0,
+      playing: false,
+      raf: 0,
+      lastTick: 0,
+      seeking: false,
+      saved: false,
+    };
+
+    const els = {
+      shell: document.getElementById("shell"),
+      video: document.getElementById("video"),
+      audio: document.getElementById("audio"),
+      slide: document.getElementById("slide"),
+      slideFrame: document.getElementById("slideFrame"),
+      titleCard: document.getElementById("titleCard"),
+      courseLayer: document.getElementById("courseLayer"),
+      rail: document.getElementById("rail"),
+      scrub: document.getElementById("scrub"),
+      clock: document.getElementById("clock"),
+      toggle: document.getElementById("toggle"),
+      speed: document.getElementById("speed"),
+      empty: document.getElementById("empty"),
+      stateLine: document.getElementById("stateLine"),
+      kindBadge: document.getElementById("kindBadge"),
+      kindLabel: document.getElementById("kindLabel"),
+      pageChip: document.getElementById("pageChip"),
+      playerShell: document.getElementById("playerShell"),
+      stage: document.getElementById("stage"),
+      coachText: document.getElementById("coachText"),
+      holdTalk: document.getElementById("holdTalk"),
+      holdLabel: document.getElementById("holdLabel"),
+      coachSend: document.getElementById("coachSend"),
+      coachMeta: document.getElementById("coachMeta"),
+      coachLog: document.getElementById("coachLog"),
+      micTop: document.getElementById("micTop"),
+      tutorScrub: document.getElementById("tutorScrub"),
+      tutorClock: document.getElementById("tutorClock"),
+      assetTitle: document.getElementById("assetTitle"),
+      assetBody: document.getElementById("assetBody"),
+      lectureBody: document.getElementById("lectureBody"),
+      tutorStudent: document.getElementById("tutorStudent"),
+      tutorLecture: document.getElementById("tutorLecture"),
+      askCode: document.getElementById("askCode"),
+      askModal: document.getElementById("askModal"),
+      askCodePreview: document.getElementById("askCodePreview"),
+      askExtra: document.getElementById("askExtra"),
+      fileUp: document.getElementById("fileUp"),
+      toggleChat: document.getElementById("toggleChat"),
+      stageLoading: document.getElementById("stageLoading"),
+      bootOverlay: document.getElementById("bootOverlay"),
+      toastHost: document.getElementById("toastHost"),
+      errorBanner: document.getElementById("errorBanner"),
+      errorText: document.getElementById("errorText"),
+      progressText: document.getElementById("progressText"),
+      courses: document.getElementById("courses"),
+    };
+
+    const togglePlayIcon = els.toggle.querySelector(".icon-play");
+    const togglePauseIcon = els.toggle.querySelector(".icon-pause");
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let listening = false;
+    if (SpeechRec) {
+      recognition = new SpeechRec();
+      recognition.lang = "zh-CN";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onresult = (ev) => {
+        let finalText = "", interim = "";
+        for (let i = 0; i < ev.results.length; i++) {
+          const chunk = ev.results[i][0].transcript;
+          if (ev.results[i].isFinal) finalText += chunk;
+          else interim += chunk;
+        }
+        els.coachText.value = (finalText || interim || "").trim();
+      };
+      recognition.onerror = () => stopTalk(false);
+      recognition.onend = () => {
+        if (listening) {
+          listening = false;
+          setMicUI(false);
+        }
+      };
+    } else {
+      els.holdTalk.disabled = true;
+      els.holdLabel.textContent = "需 Chrome";
+      els.micTop.disabled = true;
+    }
+
+    function friendlyError(raw) {
+      const s = String(raw || "").trim();
+      if (!s) return "操作未完成，请稍后再试。";
+      if (/api[_-]?key|token|secret|Bearer|sk-/i.test(s)) return "助手服务暂时不可用，请稍后再试。";
+      if (/ENOENT|EACCES|traceback|FileNotFound|\/Users\/|\/home\/|\\\\/i.test(s)) {
+        return "服务端处理失败，请稍后再试。";
+      }
+      if (s.length > 160) return s.slice(0, 140) + "…";
+      return s;
+    }
+
+    function showToast(message, kind) {
+      const el = document.createElement("div");
+      el.className = "toast" + (kind === "error" ? " error" : "");
+      el.innerHTML = "<span></span><button type='button' class='toast-x' aria-label='关闭'>×</button>";
+      el.querySelector("span").textContent = message;
+      el.querySelector(".toast-x").onclick = () => el.remove();
+      els.toastHost.appendChild(el);
+      setTimeout(() => { if (el.parentNode) el.remove(); }, 4200);
+    }
+
+    function showError(message) {
+      const msg = friendlyError(message);
+      els.errorText.textContent = msg;
+      els.errorBanner.classList.add("on");
+      showToast(msg, "error");
+    }
+
+    function clearError() {
+      els.errorBanner.classList.remove("on");
+      els.errorText.textContent = "";
+    }
+
+    function setStageLoading(on) {
+      els.stageLoading.classList.toggle("on", !!on);
+      if (on) {
+        els.kindBadge.dataset.kind = "loading";
+        els.kindLabel.textContent = KIND_LABEL.loading;
+      } else if (!tutor.active) {
+        const clip = machine.clips[machine.clipIndex];
+        if (clip) setBadge(kindOf(clip), clip, machine.pageIndex);
+        else setBadge("idle", null, -1);
+      }
+    }
+
+    function setMicUI(on) {
+      els.holdTalk.classList.toggle("listening", on);
+      els.micTop.classList.toggle("listening", on);
+      els.holdLabel.textContent = on ? "松开" : (SpeechRec ? "按住" : "需 Chrome");
+    }
+
+    function setToggleUI(isPlaying) {
+      togglePlayIcon.classList.toggle("hidden", !!isPlaying);
+      togglePauseIcon.classList.toggle("hidden", !isPlaying);
+      els.toggle.setAttribute("aria-label", isPlaying ? "暂停" : "播放");
+    }
+
+    function kindOf(clip) {
+      const k = String(clip?.kind || "video");
+      return (k === "slides" || k === "audio" || k === "video") ? k : "video";
+    }
+    function kindText(kind) { return KIND_LABEL[kind] || kind; }
+    function fmt(sec) {
+      const n = Math.max(0, Math.floor(sec || 0));
+      return String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0");
+    }
+    function totalDur() {
+      return machine.clips.reduce((s, c) => s + Number(c.dur || 0), 0);
+    }
+    function clipBounds(i) {
+      let start = 0;
+      for (let n = 0; n < i; n++) start += Number(machine.clips[n].dur || 0);
+      return { start, end: start + Number(machine.clips[i]?.dur || 0), dur: Number(machine.clips[i]?.dur || 0) };
+    }
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[ch]);
+    }
+    function renderCode(text) {
+      const lines = String(text || "").split("\n");
+      return "<pre class='code-view'>" + lines.map((ln, i) =>
+        "<span class='ln'>" + String(i + 1).padStart(2, " ") + "</span> " + escapeHtml(ln)
+      ).join("\n") + "</pre>";
+    }
+    function simpleMarkdown(md) {
+      let src = escapeHtml(md || "");
+      src = src.replace(/```([\s\S]*?)```/g, (_, code) => "<pre><code>" + code.trim() + "</code></pre>");
+      src = src.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+      src = src.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+      src = src.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+      src = src.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      src = src.replace(/`([^`]+)`/g, "<code>$1</code>");
+      src = src.replace(/^(?:- |\* )(.+)$/gm, "<li>$1</li>");
+      src = src.replace(/(<li>[\s\S]*?<\/li>)(?:\n<li>[\s\S]*?<\/li>)*/g, (m) => "<ul>" + m + "</ul>");
+      src = src.replace(/\n{2,}/g, "<br/><br/>").replace(/\n/g, "<br/>");
+      return src;
+    }
+
+    function resolveAt(globalT) {
+      let acc = 0;
+      for (let i = 0; i < machine.clips.length; i++) {
+        const dur = Number(machine.clips[i].dur || 0) || 0.01;
+        if (globalT < acc + dur || i === machine.clips.length - 1) {
+          const local = Math.max(0, Math.min(dur, globalT - acc));
+          const clip = machine.clips[i];
+          let pageIndex = -1;
+          if (kindOf(clip) === "slides" && (clip.pages || []).length) {
+            pageIndex = 0;
+            for (let p = 0; p < clip.pages.length; p++) {
+              if (local + 0.001 >= Number(clip.pages[p].at || 0)) pageIndex = p;
+            }
+          }
+          return { clipIndex: i, local, pageIndex, clip };
+        }
+        acc += dur;
+      }
+      return null;
+    }
+
+    function setBadge(kind, clip, pageIndex) {
+      els.kindBadge.dataset.kind = kind;
+      els.kindLabel.textContent = kindText(kind);
+      const pages = clip?.pages || [];
+      if (kind === "slides" && pages.length) {
+        els.pageChip.textContent = (pageIndex + 1) + " / " + pages.length;
+        els.pageChip.classList.remove("hidden");
+      } else {
+        els.pageChip.classList.add("hidden");
+      }
+    }
+
+    function hideVisuals() {
+      els.video.classList.add("hidden");
+      els.slide.classList.add("hidden");
+      els.slideFrame.classList.add("hidden");
+      els.titleCard.classList.add("hidden");
+    }
+
+    function showSlide(src, title) {
+      hideVisuals();
+      if (els.bootOverlay) els.bootOverlay.classList.add("hidden");
+      if (!src) {
+        els.titleCard.textContent = title || "本集";
+        els.titleCard.classList.remove("hidden");
+        return;
+      }
+      if (/\.svg($|\?)/i.test(src)) {
+        if (els.slideFrame.src !== src) els.slideFrame.src = src;
+        els.slideFrame.classList.remove("hidden");
+      } else {
+        if (els.slide.src !== src) els.slide.src = src;
+        els.slide.classList.remove("hidden");
+      }
+    }
+
+    function pauseMedia() {
+      els.video.pause();
+      els.audio.pause();
+    }
+
+    function applyRate() {
+      const r = Number(els.speed.value || 1) || 1;
+      machine.rate = r;
+      els.video.playbackRate = r;
+      els.audio.playbackRate = r;
+    }
+
+    function ensureMedia(el, src, local, wantPlay) {
+      if (els.bootOverlay) els.bootOverlay.classList.add("hidden");
+      const same = (() => {
+        try { return new URL(el.src, location.href).href === new URL(src, location.href).href; }
+        catch { return el.getAttribute("src") === src; }
+      })();
+      const apply = () => {
+        applyRate();
+        if (Math.abs((el.currentTime || 0) - local) > 0.35) el.currentTime = local;
+        if (wantPlay && !tutor.active) el.play().catch(() => {});
+        else el.pause();
+      };
+      if (!same) {
+        el.src = src;
+        const on = () => { el.removeEventListener("loadedmetadata", on); apply(); };
+        el.addEventListener("loadedmetadata", on);
+      } else apply();
+    }
+
+    function applyState(next, wantPlay) {
+      if (tutor.active) return;
+      const clip = next.clip;
+      const mode = kindOf(clip);
+      const clipChanged = next.clipIndex !== machine.clipIndex;
+      const pageChanged = next.pageIndex !== machine.pageIndex;
+      const modeChanged = mode !== machine.mode;
+      machine.clipIndex = next.clipIndex;
+      machine.pageIndex = next.pageIndex;
+      machine.mode = mode;
+      document.querySelectorAll("#rail button").forEach((el, n) => el.classList.toggle("on", n === next.clipIndex));
+      setBadge(mode, clip, next.pageIndex);
+
+      courseCodeCtx = "";
+      els.stage.dataset.hasCode = "0";
+      if (mode === "video") {
+        if (modeChanged || clipChanged) { pauseMedia(); hideVisuals(); els.video.classList.remove("hidden"); }
+        ensureMedia(els.video, clip.src, next.local, wantPlay);
+        els.audio.removeAttribute("src");
+      } else if (mode === "slides") {
+        if (modeChanged || clipChanged) { els.video.pause(); els.video.removeAttribute("src"); }
+        if (pageChanged || clipChanged || modeChanged) {
+          const page = (clip.pages || [])[Math.max(0, next.pageIndex)];
+          showSlide(page?.src || "", clip.title || "幻灯片");
+          if (page?.src && /\.(py|js|ts|tsx)$/i.test(page.src)) {
+            courseCodeCtx = page.src;
+            els.stage.dataset.hasCode = "1";
+          }
+        }
+        if (clip.audio) ensureMedia(els.audio, clip.audio, next.local, wantPlay);
+        if ((clip.pages || []).length) els.stage.dataset.hasCode = "1";
+      } else {
+        if (modeChanged || clipChanged) {
+          els.video.pause(); els.video.removeAttribute("src");
+          showSlide("", clip.title || "口播");
+        }
+        if (clip.audio) ensureMedia(els.audio, clip.audio, next.local, wantPlay);
+      }
+      const pageBit = mode === "slides" && (clip.pages || []).length
+        ? " · 第 " + (next.pageIndex + 1) + "/" + clip.pages.length + " 页" : "";
+      els.stateLine.textContent =
+        kindText(mode) + " · " + (clip.title || ("片段 " + (next.clipIndex + 1))) +
+        " · " + (next.clipIndex + 1) + "/" + machine.clips.length + pageBit;
+    }
+
+    function renderClock() {
+      const all = totalDur();
+      els.scrub.max = String(all || 0);
+      if (!machine.seeking) els.scrub.value = String(Math.min(machine.t, all || 0));
+      els.clock.textContent = fmt(machine.t) + " / " + fmt(all);
+      const isPlaying = tutor.active ? tutor.playing : machine.playing;
+      setToggleUI(isPlaying);
+      els.scrub.disabled = !!tutor.active;
+    }
+
+    function seekTo(globalT, play) {
+      const all = totalDur();
+      machine.t = Math.max(0, Math.min(all, globalT));
+      const next = resolveAt(machine.t);
+      if (!next) return;
+      applyState(next, play && !tutor.active);
+      renderClock();
+    }
+
+    function tick(now) {
+      if (!machine.playing || tutor.active) return;
+      if (!machine.lastTick) machine.lastTick = now;
+      const dt = Math.min(0.25, (now - machine.lastTick) / 1000) * machine.rate;
+      machine.lastTick = now;
+      const active = machine.mode === "video" ? els.video : els.audio;
+      if (active && active.src && !active.paused && !active.ended) {
+        machine.t = clipBounds(machine.clipIndex).start + (active.currentTime || 0);
+      } else machine.t += dt;
+      const all = totalDur();
+      if (machine.t >= all - 0.05) {
+        machine.t = all; machine.playing = false; pauseMedia(); renderClock(); return;
+      }
+      const next = resolveAt(machine.t);
+      if (next) applyState(next, true);
+      renderClock();
+      machine.raf = requestAnimationFrame(tick);
+    }
+
+    function play() {
+      if (!machine.clips.length || tutor.active) return;
+      machine.playing = true; machine.lastTick = 0;
+      seekTo(machine.t, true);
+      cancelAnimationFrame(machine.raf);
+      machine.raf = requestAnimationFrame(tick);
+    }
+    function pause() {
+      machine.playing = false; pauseMedia();
+      cancelAnimationFrame(machine.raf); renderClock();
+    }
+
+    function tutorFocus(at) {
+      const beats = tutor.payload?.beats || [];
+      let focus = "lecture";
+      for (const b of beats) {
+        if (at + 0.001 >= Number(b.at || 0)) focus = b.focus || "lecture";
+      }
+      els.tutorStudent.classList.toggle("focus-on", focus === "student");
+      els.tutorLecture.classList.toggle("focus-on", focus === "lecture");
+    }
+
+    function renderTutorClock() {
+      const dur = Number(tutor.payload?.dur || 16);
+      els.tutorScrub.max = String(dur);
+      if (!tutor.seeking) els.tutorScrub.value = String(Math.min(tutor.t, dur));
+      els.tutorClock.textContent = fmt(tutor.t) + " / " + fmt(dur);
+    }
+
+    function fillTutorStage(payload) {
+      const asset = payload.asset || {};
+      els.assetTitle.textContent = asset.title || "学生提交素材";
+      const imgSrc = asset.image_url || asset.image_data_url || "";
+      if (imgSrc) {
+        els.assetBody.innerHTML = "<img class='tutor-img' alt='素材' src='" + imgSrc.replace(/'/g, "%27") + "' />"
+          + (asset.content && asset.kind === "image"
+            ? "<pre class='code-view' style='margin-top:10px;max-height:28%'>" + escapeHtml(shortText(asset.content, 1200)) + "</pre>"
+            : "");
+      } else if (asset.kind === "code" || asset.kind === "log" || /```|def |Error|Traceback/.test(asset.content || "")) {
+        els.assetBody.innerHTML = renderCode(asset.content || "");
+      } else {
+        els.assetBody.innerHTML = renderCode(asset.content || payload.reply || "");
+      }
+      els.lectureBody.innerHTML = simpleMarkdown(payload.lecture_md || payload.reply || "");
+      tutorFocus(0);
+    }
+
+    function enterTutor(payload) {
+      tutor.resumeT = machine.t;
+      tutor.resumePlaying = machine.playing;
+      pause();
+      tutor.active = true;
+      tutor.payload = payload;
+      tutor.t = 0;
+      tutor.saved = false;
+      document.body.classList.remove("mode-course");
+      document.body.classList.add("mode-tutor");
+      setBadge("tutor", null, -1);
+      fillTutorStage(payload);
+      els.stateLine.textContent = "答疑模式 · 主舞台展示学生素材与 AI 讲义";
+      renderClock();
+      renderTutorClock();
+      playTutor();
+      if (window.speechSynthesis && payload.reply) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(payload.reply);
+        u.lang = "zh-CN";
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    function leaveTutor() {
+      if (!tutor.active) return;
+      tutor.playing = false;
+      cancelAnimationFrame(tutor.raf);
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      tutor.active = false;
+      document.body.classList.remove("mode-tutor");
+      document.body.classList.add("mode-course");
+      seekTo(tutor.resumeT, false);
+      if (tutor.resumePlaying) play();
+      else renderClock();
+    }
+
+    function tutorTick(now) {
+      if (!tutor.playing || !tutor.active) return;
+      if (!tutor.lastTick) tutor.lastTick = now;
+      const dt = Math.min(0.25, (now - tutor.lastTick) / 1000);
+      tutor.lastTick = now;
+      tutor.t += dt;
+      const dur = Number(tutor.payload?.dur || 16);
+      if (tutor.t >= dur) {
+        tutor.t = dur; tutor.playing = false; renderTutorClock(); renderClock(); return;
+      }
+      tutorFocus(tutor.t);
+      renderTutorClock();
+      renderClock();
+      tutor.raf = requestAnimationFrame(tutorTick);
+    }
+
+    function playTutor() {
+      if (!tutor.active) return;
+      tutor.playing = true; tutor.lastTick = 0;
+      cancelAnimationFrame(tutor.raf);
+      tutor.raf = requestAnimationFrame(tutorTick);
+      if (window.speechSynthesis) window.speechSynthesis.resume();
+      renderClock();
+    }
+    function pauseTutor() {
+      tutor.playing = false;
+      cancelAnimationFrame(tutor.raf);
+      if (window.speechSynthesis) window.speechSynthesis.pause();
+      renderClock();
+    }
+
+    function summarizeKinds(clips) {
+      const seen = [];
+      clips.forEach((c) => {
+        const t = kindText(kindOf(c));
+        if (!seen.includes(t)) seen.push(t);
+      });
+      return seen.join(" · ") || "未出片";
+    }
+
+    function updateProgressChip() {
+      if (!currentChapter || !chapterTotal) {
+        els.progressText.textContent = "—";
+        return;
+      }
+      els.progressText.textContent = currentChapter.n + " / " + chapterTotal;
+    }
+
+    function loadTimeline(clips) {
+      if (tutor.active) leaveTutor();
+      pause();
+      machine.clips = clips || [];
+      machine.t = 0; machine.clipIndex = -1; machine.pageIndex = -1; machine.mode = "idle";
+      els.rail.innerHTML = "";
+      machine.clips.forEach((clip, i) => {
+        const kind = kindOf(clip);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.innerHTML = "<span class='clip-title'>" + escapeHtml(clip.title || ("片段 " + (i + 1))) + "</span>" +
+          "<span class='clip-kind'>" + kindText(kind) + " · " + fmt(clip.dur || 0) + "</span>";
+        btn.onclick = () => {
+          machine.t = clipBounds(i).start;
+          if (machine.playing) play(); else seekTo(machine.t, false);
+        };
+        els.rail.appendChild(btn);
+      });
+      const has = machine.clips.length > 0;
+      els.empty.classList.toggle("hidden", has);
+      els.playerShell.classList.toggle("hidden", !has);
+      if (els.bootOverlay) els.bootOverlay.classList.add("hidden");
+      if (has) {
+        seekTo(0, false);
+      } else {
+        hideVisuals();
+        setBadge("idle", null, -1);
+        els.stateLine.textContent = "本章暂无片段";
+        renderClock();
+      }
+    }
+
+    function shortText(s, n) {
+      const t = String(s || "").replace(/\s+/g, " ").trim();
+      if (t.length <= n) return t;
+      return t.slice(0, n) + "…";
+    }
+
+    function appendChat(entry) {
+      const li = document.createElement("li");
+      li.innerHTML = "<div class='q'>你：" + escapeHtml(shortText(entry.text, 120)) + "</div>" +
+        "<div class='a'>助手：" + escapeHtml(shortText(entry.reply, 160)) +
+        (entry.status ? (" · " + escapeHtml(entry.status)) : "") +
+        (entry.understanding != null ? (" · 理解约 " + entry.understanding + "%") : "") +
+        "</div>";
+      els.coachLog.prepend(li);
+    }
+
+    async function loadCoachNotes() {
+      if (!slug) return;
+      try {
+        const data = await (await fetch("/api/student-notes?slug=" + encodeURIComponent(slug))).json();
+        if (!data.ok) return;
+        els.coachLog.innerHTML = "";
+        (data.notes.entries || []).slice(-12).reverse().forEach(appendChat);
+        const s = data.summary || {};
+        els.coachMeta.textContent = "已记录 " + (s.count || 0) + " 条" +
+          (s.avg_understanding != null ? (" · 平均理解约 " + s.avg_understanding + "%") : "");
+      } catch (err) {}
+    }
+
+    async function submitCoach(extraText) {
+      const text = String(extraText != null ? extraText : (els.coachText.value || "")).trim()
+        || String(pendingAsset.content || "").trim();
+      if (!text || !slug) return;
+      const clip = machine.clips[machine.clipIndex] || {};
+      clearError();
+      els.coachSend.disabled = true;
+      setStageLoading(true);
+      try {
+        const data = await (await fetch("/api/student-coach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug,
+            chapter: currentChapter ? currentChapter.n : 1,
+            text,
+            player: {
+              t: machine.t,
+              clip_id: clip.id || "",
+              clip_title: clip.title || "",
+              kind: kindOf(clip),
+              course_code: courseCodeCtx || "",
+            },
+            asset: {
+              kind: pendingAsset.kind || "text",
+              title: pendingAsset.title || "学生素材",
+              content: pendingAsset.content || text,
+              image_data_url: pendingAsset.image_data_url || "",
+            },
+          }),
+        })).json();
+        if (!data.ok) {
+          showError(data.error || "助手暂时无法回答。");
+          els.coachMeta.textContent = "答疑未完成";
+          return;
+        }
+        els.coachText.value = "";
+        pendingAsset = { kind: "text", content: "", image_data_url: "", title: "" };
+        appendChat(data.entry);
+        if (data.summary) {
+          els.coachMeta.textContent = "已记录 " + (data.summary.count || 0) + " 条 · 问题：" +
+            ((data.summary.open_questions || []).slice(-2).join("；") || "暂无");
+        }
+        enterTutor(data.tutor || {
+          dur: 16,
+          beats: [{ at: 0, title: "素材", focus: "student" }, { at: 4, title: "讲解", focus: "lecture" }],
+          asset: { kind: "text", title: "学生素材", content: text },
+          lecture_md: data.entry.lecture_md || data.entry.reply,
+          reply: data.entry.reply,
+        });
+      } catch (err) {
+        showError("网络异常，请稍后再试。");
+        els.coachMeta.textContent = "请求失败";
+      } finally {
+        els.coachSend.disabled = false;
+        setStageLoading(false);
+      }
+    }
+
+    function startTalk(e) {
+      if (e) e.preventDefault();
+      if (!recognition || listening) return;
+      wasPlayingBeforeTalk = !tutor.active && machine.playing;
+      if (machine.playing) pause();
+      if (tutor.playing) pauseTutor();
+      listening = true; setMicUI(true);
+      els.coachText.value = "";
+      try { recognition.start(); } catch (err) { stopTalk(false); }
+    }
+    function stopTalk(submit) {
+      if (recognition && listening) { try { recognition.stop(); } catch (err) {} }
+      listening = false; setMicUI(false);
+      if (wasPlayingBeforeTalk && !tutor.active) { wasPlayingBeforeTalk = false; play(); }
+      if (submit) submitCoach();
+    }
+
+    async function loadList() {
+      const data = await (await fetch("/api/courses")).json();
+      const box = els.courses;
+      box.innerHTML = "";
+      const courses = data.courses || [];
+      if (!courses.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "暂无课程";
+        box.appendChild(opt);
+        return;
+      }
+      courses.forEach((item) => {
+        const opt = document.createElement("option");
+        opt.value = item.slug;
+        opt.textContent = item.course_title + " · " + item.ready + "/" + item.chapters;
+        if (item.slug === slug) opt.selected = true;
+        box.appendChild(opt);
+      });
+      if (!slug && courses[0]) {
+        slug = courses[0].slug;
+        history.replaceState({}, "", "/watch?slug=" + encodeURIComponent(slug));
+      }
+    }
+
+    function showChapter(ch) {
+      currentChapter = ch;
+      document.querySelectorAll(".ch").forEach((el) => el.classList.toggle("on", Number(el.dataset.n) === Number(ch.n)));
+      updateProgressChip();
+      const clips = (ch.timeline && ch.timeline.length)
+        ? ch.timeline
+        : (ch.src ? [{ id: "lesson", kind: "video", src: ch.src, title: "本集", dur: 0 }] : []);
+      loadTimeline(clips);
+    }
+
+    async function loadCourse() {
+      try {
+        await loadList();
+        if (!slug) {
+          document.getElementById("title").textContent = "暂无课程";
+          if (els.bootOverlay) {
+            els.bootOverlay.querySelector("span").textContent = "还没有可学的课程";
+            els.bootOverlay.querySelector(".shimmer")?.classList.add("hidden");
+          }
+          return;
+        }
+        const data = await (await fetch("/api/course?slug=" + encodeURIComponent(slug))).json();
+        if (!data.ok) {
+          showError(data.error || "课程加载失败");
+          return;
+        }
+        const c = data.course;
+        document.getElementById("title").textContent = c.course_title || "正式课程";
+        document.title = (c.course_title || "课场") + " · 课场";
+        const list = document.getElementById("chapters");
+        list.innerHTML = "";
+        const chapters = c.chapters || [];
+        chapterTotal = chapters.length;
+        chapters.forEach((ch) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ch" + (ch.ready ? " ready" : "");
+          btn.dataset.n = ch.n;
+          btn.innerHTML =
+            "<span class='n'>" + String(ch.n).padStart(2, "0") + "</span>" +
+            "<div>" +
+              "<div class='ttl'>" + escapeHtml(ch.title || "") + "</div>" +
+              "<div class='meta'>" + summarizeKinds(ch.timeline || []) +
+                (ch.ready ? " · 可学" : " · 未出片") + "</div>" +
+              "<div class='bar' aria-hidden='true'><i></i></div>" +
+            "</div>";
+          btn.onclick = () => showChapter(ch);
+          list.appendChild(btn);
+        });
+        const first = chapters.find((ch) => ch.ready) || chapters[0];
+        if (first) showChapter(first);
+        else {
+          if (els.bootOverlay) {
+            els.bootOverlay.querySelector("span").textContent = "本课程暂无章节";
+          }
+        }
+        loadCoachNotes();
+      } catch (err) {
+        showError("课程列表加载失败，请刷新页面。");
+      }
+    }
+
+    els.toggle.onclick = () => {
+      if (tutor.active) {
+        if (tutor.playing) pauseTutor(); else playTutor();
+      } else if (machine.playing) pause(); else play();
+    };
+    els.speed.onchange = () => applyRate();
+    els.scrub.oninput = () => {
+      if (tutor.active) return;
+      machine.seeking = true;
+      seekTo(Number(els.scrub.value || 0), machine.playing);
+    };
+    els.scrub.onchange = () => { machine.seeking = false; };
+    els.tutorScrub.oninput = () => {
+      tutor.seeking = true;
+      tutor.t = Number(els.tutorScrub.value || 0);
+      tutorFocus(tutor.t);
+      renderTutorClock();
+    };
+    els.tutorScrub.onchange = () => { tutor.seeking = false; };
+
+    document.getElementById("btnBackCourse").onclick = leaveTutor;
+    document.getElementById("btnBackCourse2").onclick = leaveTutor;
+    document.getElementById("btnReplayTutor").onclick = () => {
+      if (!tutor.payload) return;
+      tutor.t = 0; fillTutorStage(tutor.payload); playTutor();
+      if (window.speechSynthesis && tutor.payload.reply) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(tutor.payload.reply);
+        u.lang = "zh-CN"; window.speechSynthesis.speak(u);
+      }
+    };
+    document.getElementById("btnSaveNote").onclick = () => {
+      if (!tutor.payload) return;
+      const key = "tutor-note:" + slug + ":" + (currentChapter?.n || 1);
+      const pack = { saved_at: Date.now(), chapter: currentChapter?.n || 1, tutor: tutor.payload };
+      localStorage.setItem(key, JSON.stringify(pack));
+      tutor.saved = true;
+      els.coachMeta.textContent = "已保存到本机学习笔记";
+      showToast("已保存到本机学习笔记");
+    };
+
+    els.toggleChat.onclick = () => {
+      els.shell.classList.toggle("study-collapsed");
+      const collapsed = els.shell.classList.contains("study-collapsed");
+      els.toggleChat.title = collapsed ? "展开学习记录" : "收起面板";
+      els.toggleChat.setAttribute("aria-label", collapsed ? "展开学习记录" : "收起学习记录");
+    };
+
+    els.askCode.onclick = () => {
+      const clip = machine.clips[machine.clipIndex] || {};
+      const sample = (currentChapter?.script || []).slice(0, 4).join("\n") || clip.title || "当前片段";
+      courseCodeCtx = sample;
+      els.askCodePreview.textContent = sample;
+      els.askExtra.value = "";
+      els.askModal.classList.add("on");
+    };
+    document.getElementById("askCancel").onclick = () => els.askModal.classList.remove("on");
+    document.getElementById("askGo").onclick = () => {
+      els.askModal.classList.remove("on");
+      const extra = (els.askExtra.value || "").trim();
+      const body = "【课程代码上下文】\n" + courseCodeCtx + (extra ? ("\n\n【我的问题】\n" + extra) : "");
+      pendingAsset = { kind: "code", content: body, image_data_url: "", title: "课程代码提问" };
+      els.coachText.value = extra || "请讲解这段代码";
+      submitCoach(body);
+    };
+
+    els.fileUp.onchange = async () => {
+      const file = els.fileUp.files && els.fileUp.files[0];
+      if (!file) return;
+      els.coachMeta.textContent = "正在处理素材：" + file.name;
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingAsset = {
+            kind: "image",
+            content: (els.coachText.value || "").trim() || ("请看这张截图：" + file.name),
+            image_data_url: String(reader.result || ""),
+            title: file.name || "学生截图",
+          };
+          els.coachText.value = pendingAsset.content;
+          submitCoach(pendingAsset.content);
+        };
+        reader.onerror = () => showError("读取图片失败。");
+        reader.readAsDataURL(file);
+      } else {
+        try {
+          const text = await file.text();
+          const kind = /\.(py|js|ts|tsx|jsx)$/i.test(file.name) ? "code"
+            : /\.(log|txt)$/i.test(file.name) || /Traceback|Error:/.test(text) ? "log"
+            : "code";
+          pendingAsset = {
+            kind,
+            content: text,
+            image_data_url: "",
+            title: file.name || "学生代码",
+          };
+          const ask = (els.coachText.value || "").trim() || ("请看我上传的 " + file.name);
+          els.coachText.value = ask;
+          submitCoach(ask);
+        } catch (err) {
+          showError("读取文件失败。");
+        }
+      }
+      els.fileUp.value = "";
+    };
+
+    els.holdTalk.addEventListener("mousedown", startTalk);
+    els.holdTalk.addEventListener("touchstart", startTalk, { passive: false });
+    els.micTop.addEventListener("mousedown", startTalk);
+    els.micTop.addEventListener("touchstart", startTalk, { passive: false });
+    window.addEventListener("mouseup", () => { if (listening) stopTalk(true); });
+    window.addEventListener("touchend", () => { if (listening) stopTalk(true); });
+    els.coachSend.onclick = () => submitCoach();
+
+    els.coachText.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        submitCoach();
+      }
+    });
+
+    els.courses.onchange = () => {
+      const next = els.courses.value;
+      if (!next || next === slug) return;
+      slug = next;
+      history.replaceState({}, "", "/watch?slug=" + encodeURIComponent(slug));
+      loadCourse();
+    };
+
+    document.getElementById("errorClose").onclick = clearError;
+
+    ["ended"].forEach((ev) => {
+      els.video.addEventListener(ev, () => {
+        if (!machine.playing || tutor.active) return;
+        machine.t = clipBounds(machine.clipIndex).end + 0.01;
+      });
+      els.audio.addEventListener(ev, () => {
+        if (!machine.playing || tutor.active) return;
+        machine.t = clipBounds(machine.clipIndex).end + 0.01;
+      });
+    });
+
+    document.body.classList.add("mode-course");
+    loadCourse();
+  </script>
+</body>
+</html>

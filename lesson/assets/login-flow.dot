@@ -1,0 +1,45 @@
+digraph login_flow {
+  rankdir=LR;
+  bgcolor="#1A1D23";
+  pad=0.6;
+  nodesep=0.7;
+  ranksep=1.1;
+
+  node [
+    shape=box,
+    style="filled,rounded",
+    fillcolor="#2B303B",
+    color="#5E6A7D",
+    fontcolor="#E8EEF6",
+    fontname="PingFang SC, Helvetica, Arial",
+    fontsize=16,
+    penwidth=1.2,
+    margin="0.28,0.18"
+  ];
+
+  edge [
+    color="#8B9BB4",
+    fontcolor="#C5D0DE",
+    fontname="PingFang SC, Helvetica, Arial",
+    fontsize=12,
+    penwidth=1.6,
+    arrowsize=0.8
+  ];
+
+  login [
+    label="登录",
+    fillcolor="#243044"
+  ];
+  code [
+    label="验证码",
+    fillcolor="#2A3A2E"
+  ];
+  ok [
+    label="成功",
+    fillcolor="#3D2F1E",
+    color="#C4A35A"
+  ];
+
+  login -> code [label=" 提交账号 "];
+  code -> ok   [label=" 校验通过 "];
+}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>找视频 · 找 BGM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#101418; --card:#1a2229; --line:#2c3944; --ink:#e8eef2; --mute:#8b9aa6; --gold:#e2b15a; --ok:#7dce9a; --bad:#ef7a6b; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+    body { min-height: 100vh; background-image: radial-gradient(700px 320px at 100% 0, rgba(226,177,90,.12), transparent 55%); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+    h1 { margin: 6px 0 0; font-size: 34px; letter-spacing: -.03em; }
+    .kicker { color: var(--gold); letter-spacing: .16em; font-size: 11px; font-family: "IBM Plex Mono", monospace; }
+    .hint { color: var(--mute); font-size: 13px; }
+    .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 22px 0 14px; }
+    input, select, button {
+      font: inherit; border-radius: 10px; border: 1px solid var(--line); background: #0d1216; color: var(--ink); padding: 10px 12px;
+    }
+    input { flex: 1; min-width: 220px; }
+    button { cursor: pointer; }
+    .go { background: var(--gold); color: #1a1408; border: 0; font-weight: 600; }
+    .tabs button.on, .src button.on { border-color: var(--gold); color: var(--gold); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .thumb { width: 100%; height: 140px; object-fit: cover; background: #0b0f12; display: block; }
+    .meta { padding: 10px 12px 12px; }
+    .meta b { display: block; font-size: 14px; margin-bottom: 4px; }
+    .meta span { color: var(--mute); font-size: 12px; }
+    .meta .row { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; align-items: center; }
+    .dl { background: transparent; color: var(--gold); }
+    video, audio { width: 100%; }
+    .status { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--mute); min-height: 1.4em; }
+    .status.bad { color: var(--bad); }
+    .status.ok { color: var(--ok); }
+    a { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="kicker">STOCK DESK · PEXELS / PIXABAY / ARCHIVE</div>
+    <h1>找视频，找背景音乐</h1>
+    <p class="hint">MoneyPrinterPlus 用的是 Pexels + Pixabay 搜成片素材，BGM 放本地文件夹。这里同样两路：网上搜，本地 <code>tools/stock-media/bgmusic</code> 也能列出来。下载到 <code>recordings/stock-media</code>。</p>
+    <p class="status" id="keys"></p>
+    <div class="bar tabs">
+      <button type="button" class="on" data-kind="video">找视频</button>
+      <button type="button" data-kind="music">找 BGM</button>
+    </div>
+    <div class="bar">
+      <input id="q" placeholder="英文关键词更好，比如 electric car night" />
+      <div class="bar src" style="margin:0">
+        <button type="button" class="on" data-source="auto">自动</button>
+        <button type="button" data-source="pexels">Pexels</button>
+        <button type="button" data-source="pixabay">Pixabay</button>
+        <button type="button" data-source="archive">Archive</button>
+        <button type="button" data-source="local">本地 BGM</button>
+      </div>
+      <button class="go" id="go" type="button">搜索</button>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="grid" id="grid"></div>
+  </div>
+  <script>
+    const state = { kind: "video", source: "auto" };
+    const $ = (id) => document.getElementById(id);
+
+    function setOn(sel, attr, value) {
+      document.querySelectorAll(sel).forEach((btn) => btn.classList.toggle("on", btn.dataset[attr] === value));
+    }
+
+    document.querySelectorAll(".tabs button").forEach((btn) => {
+      btn.onclick = () => { state.kind = btn.dataset.kind; setOn(".tabs button", "kind", state.kind); };
+    });
+    document.querySelectorAll(".src button").forEach((btn) => {
+      btn.onclick = () => { state.source = btn.dataset.source; setOn(".src button", "source", state.source); };
+    });
+
+    async function boot() {
+      const s = await fetch("/api/status").then((r) => r.json());
+      const miss = [];
+      if (!s.pexels) miss.push("Pexels");
+      if (!s.pixabay) miss.push("Pixabay");
+      $("keys").innerHTML = miss.length
+        ? "网上片源要 Key：把 " + miss.join(" / ") + " 写进 tools/stock-media/.env。没有 Key 时用 Archive.org。免费申请：<a href='https://www.pexels.com/api/' target='_blank'>Pexels</a> · <a href='https://pixabay.com/api/docs/' target='_blank'>Pixabay</a>"
+        : "Pexels / Pixabay Key 已就绪";
+    }
+
+    $("go").onclick = search;
+    $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+
+    async function search() {
+      $("status").className = "status";
+      $("status").textContent = "搜索中…";
+      $("grid").innerHTML = "";
+      const resp = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: state.kind, query: $("q").value, source: state.source }),
+      });
+      const data = await resp.json();
+      if (!data.ok) {
+        $("status").className = "status bad";
+        $("status").textContent = data.error || "失败";
+        return;
+      }
+      $("status").textContent = "找到 " + data.items.length + " 条";
+      for (const item of data.items) $("grid").appendChild(card(item));
+    }
+
+    function card(item) {
+      const el = document.createElement("article");
+      el.className = "card";
+      const media = item.kind === "music"
+        ? (item.preview ? `<audio controls preload="none" src="${esc(item.preview)}"></audio>` : "")
+        : (item.thumb ? `<img class="thumb" src="${esc(item.thumb)}" alt="">` : `<div class="thumb"></div>`);
+      el.innerHTML = `${media}<div class="meta"><b>${esc(item.title)}</b><span>${esc(item.source)} · ${esc(item.author || "")} · ${item.duration || "?"}s</span><div class="row"><button class="dl" type="button">下载</button>${item.page ? `<a href="${esc(item.page)}" target="_blank">来源</a>` : ""}</div></div>`;
+      el.querySelector(".dl").onclick = () => save(item, el.querySelector(".dl"));
+      return el;
+    }
+
+    async function save(item, btn) {
+      btn.disabled = true;
+      btn.textContent = "下载中";
+      const resp = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item }),
+      });
+      const data = await resp.json();
+      btn.disabled = false;
+      if (!data.ok) {
+        btn.textContent = "失败";
+        $("status").className = "status bad";
+        $("status").textContent = data.error || "下载失败";
+        return;
+      }
+      btn.textContent = "已保存";
+      $("status").className = "status ok";
+      $("status").textContent = "已写入 " + data.path;
+    }
+
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    boot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>选版式 · 出 PPT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,700&family=Noto+Serif+SC:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #efe6d6;
+      --ink: #1b140c;
+      --rule: #c9b89a;
+      --red: #b42318;
+      --ok: #1f6b3a;
+      --muted: #6d5e48;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--paper); color: var(--ink); }
+    body {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      min-height: 100%;
+      background-image:
+        linear-gradient(180deg, rgba(255,255,255,.35), transparent 28%),
+        repeating-linear-gradient(90deg, transparent 0 31px, rgba(27,20,12,.04) 31px 32px);
+    }
+    .sheet { max-width: 1280px; margin: 0 auto; padding: 28px 22px 80px; }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 16px;
+      margin-bottom: 22px;
+    }
+    h1 {
+      font-family: "Noto Serif SC", "Newsreader", serif;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: .95;
+      margin: 0;
+      letter-spacing: -.03em;
+    }
+    .kicker { letter-spacing: .22em; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .stamp {
+      border: 2px solid var(--red);
+      color: var(--red);
+      padding: 10px 14px;
+      transform: rotate(-8deg);
+      font-size: 12px;
+      letter-spacing: .16em;
+      height: fit-content;
+    }
+    .stage {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 22px;
+    }
+    @media (max-width: 980px) { .stage { grid-template-columns: 1fr; } }
+    .label {
+      font-size: 11px;
+      letter-spacing: .18em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .preview-board {
+      border: 2px solid var(--ink);
+      background: #f7f1e6;
+      min-height: 420px;
+      padding: 14px;
+      position: relative;
+    }
+    .preview-board iframe {
+      width: 100%;
+      height: 520px;
+      border: 0;
+      background: white;
+    }
+    .preview-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .thumbs button {
+      border: 1px solid var(--rule);
+      background: white;
+      padding: 0;
+      height: 84px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .thumbs button.on { outline: 2px solid var(--red); }
+    .thumbs img { width: 100%; height: 84px; object-fit: cover; display: block; }
+    .layouts, .brands, .styles { display: grid; gap: 8px; }
+    .layouts { grid-template-columns: 1fr 1fr; }
+    .card {
+      text-align: left;
+      border: 1px solid var(--rule);
+      background: #fbf6ec;
+      padding: 10px;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+    }
+    .card.on { border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+    .card b { display: block; font-family: "Noto Serif SC", serif; font-size: 15px; margin-bottom: 4px; }
+    .card span { color: var(--muted); font-size: 11px; line-height: 1.4; display: block; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow: auto; }
+    .chip {
+      border: 1px solid var(--rule);
+      background: transparent;
+      font: inherit;
+      font-size: 11px;
+      padding: 6px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chip.on { border-color: var(--ink); background: #fff; }
+    .swatch { width: 12px; height: 12px; border: 1px solid var(--ink); }
+    form { display: grid; gap: 8px; margin-top: 16px; }
+    input, textarea {
+      width: 100%;
+      font: inherit;
+      background: #fffdf8;
+      border: 1px solid var(--ink);
+      padding: 9px 10px;
+      color: var(--ink);
+    }
+    input[type="checkbox"] { width: auto; padding: 0; }
+    textarea { min-height: 150px; line-height: 1.5; resize: vertical; }
+    .go {
+      margin-top: 8px;
+      background: var(--ink);
+      color: var(--paper);
+      border: 0;
+      padding: 14px 16px;
+      font: inherit;
+      letter-spacing: .14em;
+      cursor: pointer;
+    }
+    .go:disabled { opacity: .45; cursor: wait; }
+    .status { min-height: 1.4em; font-size: 12px; color: var(--ok); }
+    .status.err { color: var(--red); }
+    a { color: var(--red); }
+    .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header>
+      <div>
+        <div class="kicker">PPT MASTER · LOCAL PRESS</div>
+        <h1>先看版式<br>再出片子</h1>
+        <p class="hint">点左边一套结构，点品牌和讲法，填课纲，按生成。走的是 PPT Master 原生导出，不是截图。测 DeepSeek 请去 <a href="/deepseek">出片台</a>。</p>
+      </div>
+      <div class="stamp">本地 / 可选</div>
+    </header>
+    <div class="stage">
+      <section>
+        <p class="label">大样 · 选中的封面</p>
+        <div class="preview-board">
+          <iframe id="hero" title="版式预览"></iframe>
+        </div>
+        <div class="preview-meta">
+          <span id="heroName">presentation_core</span>
+          <span id="heroInfo"></span>
+        </div>
+        <div class="thumbs" id="thumbs"></div>
+        <p class="label" style="margin-top:18px">七套版式</p>
+        <div class="layouts" id="layouts"></div>
+      </section>
+      <aside>
+        <p class="label">品牌色 · 可空</p>
+        <div class="chips" id="brands"></div>
+        <p class="label" style="margin-top:16px">讲法</p>
+        <div class="chips" id="styles"></div>
+        <form id="form">
+          <p class="label">课纲</p>
+          <input id="title" value="现在完成时" />
+          <input id="subtitle" value="初二 · 8 分钟" />
+          <input id="audience" value="初二学生" />
+          <textarea id="pages">结构
+肯定：I have finished my homework.
+否定：She has not seen this movie.
+
+和过去式怎么分
+过去式只说当时那件事
+完成时强调现在的结果
+
+三道例题
+I have finished my homework.
+He went to the park yesterday.
+Have you ever eaten hotpot?</textarea>
+          <p class="hint">空行分段。每段第一行是页标题，下面是要点。</p>
+          <label class="hint" style="display:flex;gap:8px;align-items:center;color:inherit">
+            <input type="checkbox" id="aiImage" checked />
+            文生图当封面背景（必开）
+          </label>
+          <button class="go" id="go" type="submit">按这个生成 PPT</button>
+          <p class="status" id="status"></p>
+        </form>
+      </aside>
+    </div>
+  </div>
+  <script>
+    const NAMES = {
+      presentation_core: "16:9 课堂",
+      presentation_core_43: "4:3 投影",
+      report_core: "报告（页码）",
+      editorial_bleed: "满铺大图",
+      moments_square: "1:1 方形",
+      story_vertical: "9:16 竖屏",
+      xiaohongshu_post: "3:4 小红书",
+    };
+    const state = { layout: "presentation_core", brand: "", style: "workshop-teaching", file: "" };
+    let catalog = { layouts: [], brands: [], styles: [] };
+
+    const $ = (id) => document.getElementById(id);
+
+    function parsePages(raw) {
+      return raw.split(/\n\s*\n/).map((block) => {
+        const lines = block.split("\n").map((s) => s.trim()).filter(Boolean);
+        if (!lines.length) return null;
+        return { title: lines[0], bullets: lines.slice(1) };
+      }).filter(Boolean);
+    }
+
+    function layoutById(id) {
+      return catalog.layouts.find((x) => x.id === id);
+    }
+
+    function svgUrl(layoutId, file) {
+      return `/tpl/layouts/${layoutId}/templates/${file}`;
+    }
+
+    const ORDER = [
+      "presentation_core", "presentation_core_43", "report_core",
+      "editorial_bleed", "moments_square", "story_vertical", "xiaohongshu_post",
+    ];
+
+    async function filledSvg(layoutId, file) {
+      const raw = await (await fetch(svgUrl(layoutId, file))).text();
+      const title = $("title").value || "标题";
+      const subtitle = $("subtitle").value || "副标题";
+      const brand = state.brand || subtitle;
+      return raw
+        .replaceAll("{{TITLE}}", title)
+        .replaceAll("{{SUBTITLE}}", subtitle)
+        .replaceAll("{{PAGE_TITLE}}", title)
+        .replaceAll("{{BRAND_LINE}}", brand)
+        .replaceAll("{{KEY_MESSAGE}}", title)
+        .replaceAll("{{CONTENT_AREA}}", "要点会写在这里")
+        .replaceAll("{{DATE}}", "2026");
+    }
+
+    async function showHero() {
+      const layout = layoutById(state.layout);
+      if (!layout) return;
+      const file = state.file || layout.preview;
+      $("heroName").textContent = `${NAMES[layout.id] || layout.id}  ·  ${file}`;
+      $("heroInfo").textContent = `${layout.canvas} · ${layout.files.length} 页原型`;
+      $("hero").srcdoc = await filledSvg(layout.id, file);
+      $("thumbs").innerHTML = layout.files.slice(0, 6).map((name) => `
+        <button type="button" data-file="${name}" class="${name === file ? "on" : ""}">
+          <img alt="${name}" src="${svgUrl(layout.id, name)}" />
+        </button>
+      `).join("");
+      $("thumbs").querySelectorAll("button").forEach((btn) => {
+        btn.onclick = () => { state.file = btn.dataset.file; showHero(); };
+      });
+    }
+
+    function paint() {
+      $("layouts").innerHTML = catalog.layouts.map((layout) => `
+        <button type="button" class="card ${layout.id === state.layout ? "on" : ""}" data-id="${layout.id}">
+          <b>${NAMES[layout.id] || layout.id}</b>
+          <span>${layout.canvas} · ${layout.files.length} 页 · ${layout.summary}</span>
+        </button>
+      `).join("");
+      $("layouts").querySelectorAll(".card").forEach((btn) => {
+        btn.onclick = () => { state.layout = btn.dataset.id; state.file = ""; paint(); showHero(); };
+      });
+      $("brands").innerHTML = `<button type="button" class="chip ${state.brand === "" ? "on" : ""}" data-id="">无品牌</button>` +
+        catalog.brands.map((b) => `
+          <button type="button" class="chip ${state.brand === b.id ? "on" : ""}" data-id="${b.id}">
+            <i class="swatch" style="background:${b.color}"></i>${b.id}
+          </button>
+        `).join("");
+      $("brands").querySelectorAll(".chip").forEach((btn) => {
+        btn.onclick = () => { state.brand = btn.dataset.id; paint(); };
+      });
+      $("styles").innerHTML = catalog.styles.map((s) => `
+        <button type="button" class="chip ${state.style === s.id ? "on" : ""}" data-id="${s.id}">${s.id}</button>
+      `).join("");
+      $("styles").querySelectorAll(".chip").forEach((btn) => {
+        btn.onclick = () => { state.style = btn.dataset.id; paint(); };
+      });
+    }
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const status = $("status");
+      const go = $("go");
+      status.className = "status";
+      status.textContent = "正在按这套版式导出…";
+      go.disabled = true;
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            layout: state.layout,
+            brand: state.brand,
+            style: state.style,
+            title: $("title").value,
+            subtitle: $("subtitle").value,
+            audience: $("audience").value,
+            pages: parsePages($("pages").value),
+            ai_image: $("aiImage").checked,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "失败");
+        status.innerHTML = `好了，${data.slides} 页。<a href="${data.download}" download>下载 PPT</a><br>${data.pptx}`;
+      } catch (err) {
+        status.className = "status err";
+        status.textContent = err.message;
+      } finally {
+        go.disabled = false;
+      }
+    };
+
+    ["title", "subtitle"].forEach((id) => {
+      $(id).addEventListener("input", () => showHero());
+    });
+
+    (async () => {
+      catalog = await (await fetch("/api/catalog")).json();
+      catalog.layouts.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+      paint();
+      await showHero();
+    })();
+  </script>
+</body>
+</html>

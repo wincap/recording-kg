@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>录课导播台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #eef4fb;
+      --card: #ffffff;
+      --ink: #1a2332;
+      --mute: #5d6b7a;
+      --line: #d7e2ee;
+      --sun: #f0c14b;
+      --gold: #c4891a;
+      --rec: #d6453d;
+      --ok: #3d8f5c;
+      --hold: #d0892a;
+      --sky: #cfe6f8;
+      --type: "Noto Sans SC", "PingFang SC", sans-serif;
+      --serif: "Noto Serif SC", "Songti SC", serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --shadow: 0 18px 40px rgba(36, 72, 120, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); }
+    body {
+      font-family: var(--type);
+      font-size: 15px;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 70% 55% at 92% -8%, #ffe9a8 0%, transparent 58%),
+        radial-gradient(ellipse 60% 50% at -6% -10%, var(--sky) 0%, transparent 54%),
+        linear-gradient(180deg, #f7fbff 0%, var(--paper) 42%, #e4eef8 100%);
+    }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+    .tally-bar {
+      height: 4px;
+      margin: 0;
+      background: linear-gradient(90deg, #f6d36a, #f0c14b 40%, #d7eaf6);
+    }
+    .tally-bar.live { background: var(--rec); }
+    .tally-bar.hold { background: var(--hold); }
+    .tally-bar.ready { background: var(--ok); }
+    .app {
+      max-width: 820px;
+      height: calc(100vh - 4px);
+      margin: 0 auto;
+      padding: 0 20px 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .mast {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex: 0 0 auto;
+      padding: 16px 0 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mark {
+      width: 44px; height: 44px; flex: 0 0 44px;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, #fff4c2, var(--sun) 42%, #e09a18);
+      color: #5a3a08;
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 8px 22px rgba(224, 154, 24, 0.35);
+    }
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .sub { margin: 4px 0 0; color: var(--mute); font-size: 13px; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+      color: var(--mute);
+    }
+    .engines {
+      display: flex;
+      flex: 0 0 auto;
+      padding: 3px;
+      gap: 2px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+    }
+    .engine {
+      border: 0;
+      background: transparent;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--mute);
+      cursor: pointer;
+    }
+    .engine.on {
+      background: #1a2332;
+      color: #fffaf1;
+    }
+    .engine:disabled { opacity: 0.38; cursor: not-allowed; }
+    .status button.restart {
+      border: 0;
+      background: transparent;
+      color: var(--mute);
+      padding: 0 0 0 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbbca4; }
+    .dot.on { background: var(--rec); box-shadow: 0 0 10px var(--rec); animation: blink 1s steps(1) infinite; }
+    .dot.hold { background: var(--hold); box-shadow: 0 0 10px var(--hold); animation: blink 1s steps(1) infinite; }
+    .dot.ready { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    @keyframes blink { 50% { opacity: 0.28; } }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dot.on, .dot.hold { animation: none; }
+      .bubble { animation: none; }
+    }
+    .project-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(18, 32, 48, 0.28);
+      backdrop-filter: blur(10px);
+    }
+    .project-gate.show { display: flex; }
+    .project-card {
+      width: min(520px, 100%);
+      max-height: min(86vh, 720px);
+      overflow: auto;
+      padding: 28px 26px 22px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .project-card h2 { font-family: var(--serif); font-size: 26px; margin: 0 0 8px; }
+    .project-card .lead { margin: 0 0 18px; color: var(--mute); font-size: 14px; line-height: 1.55; }
+    .project-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .project-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .project-list button {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: #f7fbff;
+      border-radius: 14px;
+      padding: 12px 14px;
+      cursor: pointer;
+    }
+    .project-list button:hover { border-color: #c9d8e8; }
+    .project-list .name { display: block; font-weight: 600; }
+    .project-list .meta { display: block; margin-top: 4px; color: var(--mute); font-size: 12px; }
+    .project-list .last { border-color: #e0c37a; background: #fff8e8; }
+    .gate {
+      display: none;
+      flex: 0 0 auto;
+      margin: 0 0 10px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .gate.show { display: block; }
+    .gate.hold { border-color: #efc08a; background: #fff8ee; }
+    .gate.ready { border-color: #b7dfc4; background: #f3faf5; }
+    .gate h2 { font-family: var(--serif); font-size: 20px; margin: 0 0 6px; }
+    .gate p { margin: 0; color: var(--mute); font-size: 13px; line-height: 1.55; }
+    .gate .err {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      max-height: 88px;
+      overflow: auto;
+      background: #fff7f4;
+      border: 1px solid #f0c8be;
+      border-radius: 10px;
+      color: #8a3a32;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .gate .row { margin-top: 12px; }
+    .thread {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 6px 4px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .bubble {
+      max-width: 86%;
+      animation: rise 0.22s ease;
+    }
+    .bubble.assistant { align-self: flex-start; }
+    .bubble.user { align-self: flex-end; }
+    .who {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      margin: 0 0 6px 4px;
+      font-weight: 600;
+    }
+    .bubble.user .who { color: var(--mute); text-align: right; margin-right: 4px; }
+    .said {
+      padding: 12px 16px;
+      border-radius: 8px 22px 22px 22px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user .said {
+      background: var(--ink);
+      color: #fffaf1;
+      border-radius: 22px 8px 22px 22px;
+      box-shadow: none;
+    }
+    .plan {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #f7fbff;
+    }
+    .plan b { display: block; font-size: 12px; color: var(--mute); font-weight: 500; margin: 8px 0 2px; }
+    .plan b:first-child { margin-top: 0; }
+    .plan strong { font-family: var(--serif); font-size: 18px; font-weight: 600; }
+    .plan li.here { font-weight: 650; color: var(--ink); }
+    .plan .course {
+      margin: 0 0 10px;
+      padding: 10px 12px;
+      background: #f7fbff;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .plan .course ol { margin: 4px 0 0; }
+    .plan .course li ul {
+      margin: 4px 0 10px;
+      padding-left: 1.1em;
+      color: var(--mute);
+      font-size: 13px;
+    }
+    .plan li { margin: 4px 0; }
+    .plan .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .plan .tag {
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #e8f1ea;
+      color: #2c6b45;
+    }
+    .plan .tag.skip { background: #f3eee8; color: #7a5a32; }
+    .plan input, .plan textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fff;
+      font: inherit;
+    }
+    .plan textarea { min-height: 72px; resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.45; }
+    .plan textarea.demo { min-height: 140px; }
+    .plan .tag { cursor: pointer; border: 0; }
+    .plan .tag:hover { filter: brightness(0.97); }
+    .plan .save { margin-top: 10px; }
+    .plan pre.demo {
+      margin: 8px 0 0;
+      max-height: 180px;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.45;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 7px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .chip:hover { border-color: var(--gold); background: #fff8e8; }
+    .chip.act {
+      background: var(--ink);
+      color: #fffaf1;
+      border-color: var(--ink);
+    }
+    .typing {
+      align-self: flex-start;
+      color: var(--mute);
+      font-size: 13px;
+      padding: 4px 8px;
+    }
+    .typing span {
+      display: inline-block;
+      width: 6px; height: 6px;
+      margin-right: 4px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: blink 1s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    .composer {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+    .composer textarea {
+      width: 100%;
+      border: 0;
+      resize: none;
+      min-height: 48px;
+      max-height: 140px;
+      padding: 8px 10px;
+      background: transparent;
+      line-height: 1.5;
+    }
+    .composer textarea:focus { outline: none; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .row[hidden] { display: none !important; }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 16px;
+      background: #fff;
+      color: var(--ink);
+    }
+    button:hover { border-color: #d4c09a; }
+    button:disabled { opacity: 0.38; cursor: wait; }
+    button.primary {
+      background: var(--ink);
+      color: #fffaf1;
+      border-color: var(--ink);
+      font-weight: 600;
+    }
+    button.rec { background: var(--rec); color: #fff; border-color: var(--rec); font-weight: 600; }
+    button.ghost { background: transparent; }
+    .drawer {
+      flex: 0 0 auto;
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.72);
+      max-height: 42vh;
+      overflow: auto;
+    }
+    .drawer > summary {
+      cursor: pointer;
+      padding: 10px 14px;
+      color: var(--mute);
+      font-size: 13px;
+      list-style: none;
+    }
+    .drawer > summary::-webkit-details-marker { display: none; }
+    .drawer-body { padding: 0 14px 14px; }
+    label { display: block; margin: 10px 0 6px; color: var(--mute); font-size: 12px; }
+    input, textarea.script, select {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+    }
+    textarea.script {
+      min-height: 90px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .trio { display: grid; grid-template-columns: 1.3fr 0.9fr 0.9fr; gap: 8px; }
+    .winbar { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    #takeList { min-height: 88px; }
+    .log {
+      margin-top: 8px;
+      max-height: 90px;
+      overflow: auto;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #f8fbfe;
+      color: #3d4a5c;
+      font-family: var(--mono);
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .pipe {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+    }
+    .pipe span {
+      font-size: 12px;
+      color: var(--mute);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 10px;
+      background: rgba(255,255,255,0.7);
+    }
+    .pipe span.on {
+      color: #5a3a08;
+      border-color: #f0c14b;
+      background: #fff6d8;
+      font-weight: 600;
+    }
+    .pipe span.done {
+      color: var(--ok);
+      border-color: #b7dfc4;
+      background: #f3faf5;
+    }
+    .shots { margin-top: 8px; }
+    .step {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #e8eef5;
+      font-size: 13px;
+    }
+    .num { font-family: var(--serif); color: var(--gold); }
+    @media (max-width: 700px) {
+      .app { padding: 0 12px 8px; }
+      .trio, .winbar { grid-template-columns: 1fr; }
+      .bubble { max-width: 94%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="tally-bar" id="tallyBar"></div>
+  <div class="project-gate" id="projectGate">
+    <div class="project-card">
+      <h2>选一个工程</h2>
+      <p class="lead">一门课一个工程。新建从大纲开始；也可以打开上次的课接着改口播、PPT 或重录代码章。</p>
+      <div class="project-actions">
+        <button type="button" class="primary keep-on" id="projectNew">新建工程</button>
+        <button type="button" class="ghost keep-on" id="projectLast" hidden>打开上次</button>
+      </div>
+      <ul class="project-list" id="projectList"></ul>
+    </div>
+  </div>
+  <div class="app">
+    <header class="mast">
+      <div class="brand">
+        <div class="mark">录</div>
+        <div>
+          <h1>录课导播台</h1>
+          <p class="sub" id="projectSub">大纲 → 素材 → 出片 → <a href="/watch" target="_blank" style="color:var(--gold);text-decoration:none">学生端</a></p>
+        </div>
+      </div>
+      <div class="engines" id="engines" role="radiogroup" aria-label="问答模型">
+        <button type="button" class="engine on" data-engine="deepseek">DeepSeek</button>
+      </div>
+      <div class="status"><span class="dot" id="recDot"></span><span id="recLabel">待命</span>
+        <button type="button" class="ghost restart keep-on" id="restartChat">换工程</button>
+      </div>
+    </header>
+
+    <section class="gate" id="gate">
+      <h2 id="gateTitle">这一轮进行中</h2>
+      <p id="gateText"></p>
+      <pre class="err" id="gateOut" hidden></pre>
+      <div class="row" id="gateWatching">
+        <button class="keep-on ghost" id="markHold">卡住了，我来处理</button>
+        <button class="keep-on rec" id="stopWatch">停止录制</button>
+      </div>
+      <div class="row" id="gateHold" hidden>
+        <button class="keep-on primary" id="humanOk">我处理完了，继续</button>
+        <button class="keep-on rec" id="stopKeep">停录并保留</button>
+        <button class="keep-on ghost" id="abortRec">作废重来</button>
+      </div>
+      <div class="row" id="gateReady" hidden>
+        <button class="keep-on rec" id="stopReady">停止录制</button>
+      </div>
+    </section>
+
+    <div class="thread" id="thread" aria-live="polite"></div>
+    <div class="typing" id="typing" hidden><span></span><span></span><span></span><span id="typingLabel">导播在想</span></div>
+
+    <form class="composer" id="composer">
+      <textarea id="talk" rows="2" placeholder="随便说，一次说一点就行"></textarea>
+      <button class="primary keep-on" type="submit" id="sendTalk">发送</button>
+    </form>
+
+    <details class="drawer">
+      <summary>底稿、窗口和成片 · 需要时再打开</summary>
+      <div class="drawer-body">
+        <label for="rundownScript">整课分镜</label>
+        <textarea id="rundownScript" class="script">card 开场 · 看官网
+web
+open https://www.langchain.com/
+look 2
+scroll 3
+look 1</textarea>
+        <label for="demoScript">网页镜头</label>
+        <textarea id="demoScript" class="script">open https://www.langchain.com/
+look 2
+scroll 5
+look 1.2</textarea>
+        <div class="trio">
+          <div>
+            <label for="browserUrl">网址</label>
+            <input id="browserUrl" value="https://www.langchain.com/" />
+          </div>
+          <div>
+            <label for="searchQuery">搜索词</label>
+            <input id="searchQuery" value="langchain" />
+          </div>
+          <div>
+            <label for="clickText">按钮文字</label>
+            <input id="clickText" value="Start building" />
+          </div>
+        </div>
+        <label for="termScript">终端镜头</label>
+        <textarea id="termScript" class="script">run python3 helloworld.py
+look 2</textarea>
+        <label for="prompt">Agent 提示词</label>
+        <textarea id="prompt" class="script"></textarea>
+        <label for="expect">完成标志</label>
+        <input id="expect" />
+        <label for="folder">项目目录</label>
+        <input id="folder" />
+        <div class="winbar">
+          <select id="browserWin"><option value="">还没扫到浏览器窗口</option></select>
+          <button class="ghost" id="refreshWins" type="button">刷新窗口</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="runRundown" type="button">按分镜录</button>
+          <button class="keep-on rec" id="stopBrowser" type="button">停止</button>
+          <button class="keep-on ghost" id="abortBrowser" type="button">作废</button>
+          <button class="ghost" id="runDemo" type="button">录网页</button>
+          <button class="ghost" id="openBrowser" type="button">打开网页</button>
+          <button class="ghost" id="recBrowser" type="button">只开始录</button>
+          <button class="ghost" id="runTerm" type="button">录终端</button>
+          <button class="ghost" id="openTerm" type="button">打开终端</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="ghost" id="runAll" type="button">Cursor 前五步</button>
+          <button class="keep-on rec" id="stop" type="button">停止录制</button>
+          <button class="ghost" id="snapSave" type="button">存快照</button>
+          <button class="ghost" id="snapRestore" type="button">还原现场</button>
+        </div>
+        <p class="out" id="output"></p>
+        <div class="shots">
+          <div class="step" data-step="准备目录"><span class="num">01</span><span>准备目录</span><button data-api="/api/prepare">执行</button></div>
+          <div class="step" data-step="打开 Cursor 窗口"><span class="num">02</span><span>打开 Cursor 窗口</span><button data-api="/api/open-window">执行</button></div>
+          <div class="step" data-step="打开右侧 Agent"><span class="num">03</span><span>打开右侧 Agent</span><button data-api="/api/open-chat">执行</button></div>
+          <div class="step" data-step="开始录制"><span class="num">04</span><span>开始录制</span><button data-api="/api/record-start">执行</button></div>
+          <div class="step" data-step="发送提示词"><span class="num">05</span><span>发送提示词</span><button data-api="/api/send">执行</button></div>
+          <div class="step" data-step="停止录制"><span class="num">06</span><span>停止录制</span><button class="keep-on rec" data-api="/api/record-stop">执行</button></div>
+          <div class="step" data-step="关闭新窗口"><span class="num">07</span><span>关新窗口</span><button class="ghost" data-auto disabled>自动</button></div>
+        </div>
+        <label for="takeList">成片</label>
+        <select id="takeList" multiple size="6"></select>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="joinTakes" type="button">拼接勾选</button>
+          <button class="ghost" id="splitTakes" type="button">左右对比</button>
+          <button class="ghost" id="packLesson" type="button">出讲义作业</button>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </details>
+  </div>
+  <script>
+    const folder = document.getElementById("folder");
+    const prompt = document.getElementById("prompt");
+    const expectEl = document.getElementById("expect");
+    const logEl = document.getElementById("log");
+    const recDot = document.getElementById("recDot");
+    const recLabel = document.getElementById("recLabel");
+    const output = document.getElementById("output");
+    const browserUrl = document.getElementById("browserUrl");
+    const browserWin = document.getElementById("browserWin");
+    const searchQuery = document.getElementById("searchQuery");
+    const clickText = document.getElementById("clickText");
+    const demoScript = document.getElementById("demoScript");
+    const tallyBar = document.getElementById("tallyBar");
+    const thread = document.getElementById("thread");
+    const typing = document.getElementById("typing");
+    const talk = document.getElementById("talk");
+    const gate = document.getElementById("gate");
+    const gateTitle = document.getElementById("gateTitle");
+    const gateText = document.getElementById("gateText");
+    const gateWatching = document.getElementById("gateWatching");
+    const gateHold = document.getElementById("gateHold");
+    const gateReady = document.getElementById("gateReady");
+    const gateOut = document.getElementById("gateOut");
+    let localTyping = false;
+    let chatStamp = "";
+
+    function chatKey(messages) {
+      const rows = messages || [];
+      const last = rows[rows.length - 1] || {};
+      return rows.length + ":" + (last.role || "") + ":" + (last.text || "");
+    }
+
+    function payload() {
+      return { folder: folder.value, prompt: prompt.value, expect: expectEl.value };
+    }
+
+    function showPlan(p, fill) {
+      if (!p) return;
+      if (p.homepage && (fill || !browserUrl.dataset.dirty)) browserUrl.value = p.homepage;
+      if (p.web_script && (fill || !demoScript.dataset.dirty)) demoScript.value = p.web_script;
+      const term = document.getElementById("termScript");
+      if (p.term_script && (fill || !term.dataset.dirty)) term.value = p.term_script;
+      const rundown = document.getElementById("rundownScript");
+      if (p.rundown && (fill || !rundown.dataset.dirty)) rundown.value = p.rundown;
+      if (p.prompt && (fill || !prompt.dataset.dirty)) prompt.value = p.prompt;
+      if (p.expect && (fill || !expectEl.dataset.dirty)) expectEl.value = p.expect;
+    }
+
+    function field(label, name, value, multiline) {
+      const wrap = document.createElement("label");
+      wrap.style.display = "block";
+      const b = document.createElement("b");
+      b.textContent = label;
+      wrap.appendChild(b);
+      const el = document.createElement(multiline ? "textarea" : "input");
+      el.name = name;
+      el.value = value || "";
+      if (multiline) el.rows = 4;
+      wrap.appendChild(el);
+      return wrap;
+    }
+
+    function collectPlan(box, p) {
+      const val = (name) => (box.querySelector("[name='" + name + "']") || {}).value || "";
+      return {
+        title: val("title"),
+        audience: val("audience"),
+        objective: val("objective"),
+        homepage: val("homepage"),
+        expect: val("expect"),
+        prompt: val("prompt"),
+        outline: val("outline"),
+        narration: val("narration"),
+        rundown: val("rundown"),
+        demo_path: val("demo_path"),
+        demo_content: val("demo_content"),
+        course_title: val("course_title"),
+        chapters: val("chapters"),
+      };
+    }
+
+    function kindName(kind) {
+      return kind === "ppt" ? "PPT" : kind === "record" ? "录屏" : "解说";
+    }
+
+    function pipeRow(p) {
+      const stage = p.pipeline || (p.chapters && p.chapters.length ? "produce" : "outline");
+      const wrap = document.createElement("div");
+      wrap.className = "pipe";
+      [
+        ["outline", "1.大纲"],
+        ["materials", "2.素材脚本"],
+        ["produce", "3.逐章出片"],
+      ].forEach(([id, label]) => {
+        const span = document.createElement("span");
+        span.textContent = label;
+        if (id === stage) span.className = "on";
+        else if ((stage === "materials" && id === "outline") || (stage === "produce" && id !== "produce")) span.className = "done";
+        wrap.appendChild(span);
+      });
+      return wrap;
+    }
+
+    function chapterLines(p) {
+      return (p.chapters || []).map((ch) => {
+        const n = ch.n || "";
+        const title = ch.title || "";
+        const goal = ch.goal ? " — " + ch.goal : "";
+        return n + ". [" + kindName(ch.kind) + "] " + title + goal;
+      }).join("\n");
+    }
+
+    function courseBlock(p, editable) {
+      const chapters = p.chapters || [];
+      if (!chapters.length && !editable) return null;
+      const wrap = document.createElement("div");
+      wrap.className = "course";
+      wrap.appendChild(pipeRow(p));
+      const here = Number(p.chapter || 1);
+      if (!editable) {
+        const b = document.createElement("b");
+        b.textContent = "课程结构 · 共 " + chapters.length + " 章 · 本集第 " + here + " 章";
+        wrap.appendChild(b);
+        if (p.course_title) {
+          const name = document.createElement("div");
+          name.textContent = p.course_title;
+          wrap.appendChild(name);
+        }
+        const ol = document.createElement("ol");
+        chapters.forEach((ch) => {
+          const li = document.createElement("li");
+          const ready = ch.status === "ready" ? " · 已出片" : "";
+          const title = document.createElement("div");
+          title.textContent = "[" + kindName(ch.kind) + "] " + (ch.title || "") + ready;
+          li.appendChild(title);
+          if (ch.goal) {
+            const goal = document.createElement("div");
+            goal.style.cssText = "color:var(--mute);font-size:13px;margin-top:2px";
+            goal.textContent = "看完：" + ch.goal;
+            li.appendChild(goal);
+          }
+          const beats = (ch.beats || []).filter(Boolean);
+          if (beats.length) {
+            const ul = document.createElement("ul");
+            beats.forEach((beat) => {
+              const b = document.createElement("li");
+              b.textContent = beat;
+              ul.appendChild(b);
+            });
+            li.appendChild(ul);
+          }
+          if (Number(ch.n) === here) li.className = "here";
+          ol.appendChild(li);
+        });
+        wrap.appendChild(ol);
+        return wrap;
+      }
+      wrap.appendChild(field("课名", "course_title", p.course_title || ""));
+      wrap.appendChild(field("课程结构（一行一章：标题 — 看完能做什么）", "chapters", chapterLines(p), true));
+      return wrap;
+    }
+
+    function planCard(p, editable) {
+      const box = document.createElement("div");
+      box.className = "plan";
+      const tools = p.tools || {};
+      const course = courseBlock(p, editable);
+      if (course) box.appendChild(course);
+      if (!editable) {
+        const title = document.createElement("strong");
+        title.textContent = (p.chapter ? ("第 " + p.chapter + " 章 · ") : "") + (p.title || "这一集");
+        box.appendChild(title);
+        [["听众", p.audience], ["看完", p.objective]].forEach(([k, v]) => {
+          if (!v) return;
+          const b = document.createElement("b");
+          b.textContent = k;
+          const span = document.createElement("div");
+          span.textContent = v;
+          box.appendChild(b);
+          box.appendChild(span);
+        });
+        const ol = document.createElement("ol");
+        (p.outline || []).forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item.beat + (item.seconds ? " · " + item.seconds + "s" : "");
+          ol.appendChild(li);
+        });
+        if (ol.childNodes.length) box.appendChild(ol);
+      } else {
+        box.appendChild(field("标题", "title", p.title));
+        box.appendChild(field("听众", "audience", p.audience));
+        box.appendChild(field("看完", "objective", p.objective));
+        box.appendChild(field("官网", "homepage", p.homepage));
+        box.appendChild(field("验收词", "expect", p.expect));
+        const outline = (p.outline || []).map((item) => item.beat || "").join("\n");
+        box.appendChild(field("这一章节拍（一行一条）", "outline", outline, true));
+        box.appendChild(field("口播（一行一句）", "narration", (p.narration || []).join("\n"), true));
+        box.appendChild(field("发给 Cursor 的提示词", "prompt", p.prompt, true));
+      }
+      const tags = document.createElement("div");
+      tags.className = "tags";
+      const addTag = (item, on) => {
+        const tag = document.createElement(editable ? "button" : "span");
+        tag.type = editable ? "button" : undefined;
+        tag.className = "tag" + (on ? "" : " skip");
+        tag.textContent = (on ? "用 " : "不用 ") + (item.label || item.id);
+        tag.title = (item.why || "") + (editable ? "（点一下开关）" : "");
+        if (editable) {
+          tag.onclick = () => {
+            const next = {
+              use_web: !!tools.use_web,
+              use_cursor: !!tools.use_cursor,
+              use_term: !!tools.use_term,
+            };
+            const id = item.id;
+            if (id === "web") next.use_web = !next.use_web;
+            if (id === "cursor") {
+              next.use_cursor = !next.use_cursor;
+              if (next.use_cursor) next.use_term = false;
+            }
+            if (id === "term") {
+              next.use_term = !next.use_term;
+              if (next.use_term) next.use_cursor = false;
+            }
+            if (id === "image") return;
+            post("/api/revise", { patch: { tools: next } });
+          };
+        }
+        tags.appendChild(tag);
+      };
+      (tools.use || []).forEach((item) => addTag(item, true));
+      (tools.skip || []).forEach((item) => addTag(item, false));
+      if (tags.childNodes.length) box.appendChild(tags);
+      const demo = (p.demo_files || [])[0] || {};
+      if (editable) {
+        box.appendChild(field("演示文件名", "demo_path", demo.path || "tiny_chain.py"));
+        const code = field("演示代码", "demo_content", demo.content || "", true);
+        const area = code.querySelector("textarea");
+        if (area) area.className = "demo";
+        box.appendChild(code);
+        box.appendChild(field("分镜", "rundown", p.rundown || "", true));
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "primary save keep-on";
+        save.textContent = "保存修改";
+        save.onclick = () => {
+          const patch = collectPlan(box, p);
+          document.getElementById("rundownScript").dataset.dirty = "";
+          post("/api/revise", { patch });
+        };
+        box.appendChild(save);
+      } else if (demo.content) {
+        const b = document.createElement("b");
+        b.textContent = tools.code_via === "cursor"
+          ? "期望 Cursor 写出的形状"
+          : "演示代码";
+        box.appendChild(b);
+        const pre = document.createElement("pre");
+        pre.className = "demo";
+        pre.textContent = (demo.path || "demo.py") + "\n\n" + demo.content;
+        box.appendChild(pre);
+      }
+      return box;
+    }
+
+    function drawMessage(msg, editable) {
+      const wrap = document.createElement("article");
+      wrap.className = "bubble " + (msg.role === "user" ? "user" : "assistant");
+      const who = document.createElement("div");
+      who.className = "who";
+      who.textContent = msg.role === "user" ? "你" : "导播";
+      const said = document.createElement("div");
+      said.className = "said";
+      said.textContent = msg.text || msg.say || "";
+      wrap.appendChild(who);
+      wrap.appendChild(said);
+      if (msg.plan) wrap.appendChild(planCard(msg.plan, !!editable));
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      (msg.acts || []).forEach((act) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip act keep-on";
+        btn.textContent = act.label;
+        btn.onclick = () => runAction(act.act);
+        chips.appendChild(btn);
+      });
+      (msg.chips || []).forEach((label) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip keep-on";
+        btn.textContent = label;
+        btn.onclick = () => sendTalk(label);
+        chips.appendChild(btn);
+      });
+      if (chips.childNodes.length) wrap.appendChild(chips);
+      return wrap;
+    }
+
+    function renderChat(messages) {
+      thread.innerHTML = "";
+      const rows = messages || [];
+      rows.forEach((msg, i) => {
+        const last = i === rows.length - 1 && msg.role === "assistant" && msg.plan && !msg.action;
+        thread.appendChild(drawMessage(msg, last));
+      });
+      thread.scrollTop = thread.scrollHeight;
+    }
+
+    function setTyping(on, label) {
+      typing.hidden = !on;
+      const tag = document.getElementById("typingLabel");
+      if (tag) tag.textContent = label || "导播在想";
+      if (on) thread.scrollTop = thread.scrollHeight;
+    }
+
+    async function sendTalk(text) {
+      const value = (text != null ? text : talk.value).trim();
+      if (!value || localTyping) return;
+      talk.value = "";
+      talk.style.height = "48px";
+      thread.appendChild(drawMessage({ role: "user", text: value }));
+      thread.scrollTop = thread.scrollHeight;
+      localTyping = true;
+      setTyping(true);
+      const data = await post("/api/chat", { text: value });
+      localTyping = false;
+      setTyping(!!data.chatting || !!data.busy, data.busy && !data.chatting ? "正在按章出片" : "导播在想");
+      if (data.action) await runAction(data.action);
+    }
+
+    async function runAction(act) {
+      const talkActs = {
+        confirm: "确认这样录",
+        confirm_outline: "确认大纲",
+        confirm_materials: "开始出片",
+        produce_chapter: "把剩下的章做完",
+        next_chapter: "把剩下的章做完",
+        web_only: "只要官网",
+        cursor_demo: "让 Cursor 写演示",
+        drop_code: "不要代码演示",
+        use_term: "改用终端跑",
+      };
+      if (talkActs[act]) return sendTalk(talkActs[act]);
+      if (act === "narrate") return post("/api/narrate");
+      if (act === "watch") {
+        window.open((window.__watchUrl || "/watch"), "_blank");
+        return;
+      }
+      if (act === "rundown") {
+        return post("/api/rundown", { script: document.getElementById("rundownScript").value });
+      }
+      if (act === "web") {
+        return post("/api/record-demo", {
+          script: demoScript.value,
+          url: browserUrl.value,
+          query: searchQuery.value,
+          click: clickText.value,
+        });
+      }
+      if (act === "term") return post("/api/record-term", { script: document.getElementById("termScript").value });
+      if (act === "cursor") return post("/api/run-all");
+      if (act === "pack") {
+        const picks = selectedTakes();
+        return post("/api/pack", { folder: picks[0] ? picks[0].replace(/\/lesson\.mp4$/, "") : "" });
+      }
+      if (act === "stop") return post("/api/record-stop");
+      if (act === "abort") return post("/api/record-abort");
+    }
+
+    function fmtWhen(ts) {
+      const d = new Date(Number(ts) * 1000);
+      if (Number.isNaN(d.getTime())) return "";
+      return (d.getMonth() + 1) + "月" + d.getDate() + "日 " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    }
+
+    function paintProjects(s) {
+      const overlay = document.getElementById("projectGate");
+      const need = !!s.need_project;
+      overlay.classList.toggle("show", need);
+      const sub = document.getElementById("projectSub");
+      if (sub) {
+        const link = '<a href="/watch" target="_blank" style="color:var(--gold);text-decoration:none">学生端</a>';
+        sub.innerHTML = s.project_title
+          ? ("工程：" + s.project_title + " · " + link)
+          : ("大纲 → 素材 → 出片 → " + link);
+      }
+      const lastBtn = document.getElementById("projectLast");
+      const rows = s.projects || [];
+      const last = rows.find((item) => item.last) || rows[0];
+      if (last && last.slug) {
+        lastBtn.hidden = false;
+        lastBtn.textContent = "打开上次 · " + (last.course_title || last.slug);
+        lastBtn.dataset.slug = last.slug;
+      } else {
+        lastBtn.hidden = true;
+        lastBtn.dataset.slug = "";
+      }
+      const box = document.getElementById("projectList");
+      box.innerHTML = "";
+      rows.forEach((item) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "keep-on" + (item.last ? " last" : "");
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = item.course_title || item.slug;
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        const bits = [(item.ready || 0) + "/" + (item.chapters || 0) + " 章已出片"];
+        if (item.updated) bits.push(fmtWhen(item.updated));
+        meta.textContent = bits.join(" · ");
+        btn.appendChild(name);
+        btn.appendChild(meta);
+        btn.onclick = () => post("/api/project", { action: "open", slug: item.slug });
+        li.appendChild(btn);
+        box.appendChild(li);
+      });
+    }
+
+    function paint(s) {
+      paintProjects(s);
+      if (s.watch_url) window.__watchUrl = s.watch_url;
+      if (s.prompt && !prompt.dataset.dirty) prompt.value = s.prompt;
+      if (s.expect != null && !expectEl.dataset.dirty) expectEl.value = s.expect;
+      const phase = s.phase || "idle";
+      recDot.classList.toggle("on", !!s.recording && phase !== "hold" && phase !== "ready");
+      recDot.classList.toggle("hold", phase === "hold");
+      recDot.classList.toggle("ready", phase === "ready");
+      recLabel.textContent = s.finished ? "已出片" : (s.failed || phase === "hold") ? (s.failed ? "失败" : "需介入") : phase === "ready" ? "完成" : (s.recording ? "录制中" : "待命");
+      const engineBox = document.getElementById("engines");
+      if (engineBox) {
+        engineBox.querySelectorAll(".engine").forEach((btn) => {
+          const id = btn.dataset.engine;
+          const meta = (s.engines || []).find((item) => item.id === id) || {};
+          btn.classList.toggle("on", s.engine === id);
+          btn.disabled = meta.ok === false;
+          btn.title = meta.ok === false
+            ? (id === "deepseek" ? "还没有 DeepSeek Key" : "不可用")
+            : (s.engine === id ? "当前问答模型：DeepSeek" : "DeepSeek");
+        });
+      }
+      tallyBar.className = "tally-bar" + (phase === "hold" ? " hold" : phase === "ready" ? " ready" : s.recording ? " live" : "");
+      const recKind = s.record_kind || "cursor";
+      const recBrowser = recKind === "browser" && !!s.recording;
+      output.textContent = s.output ? ("成片：" + s.output) : "";
+      logEl.textContent = (s.logs || []).join("\n");
+      logEl.scrollTop = logEl.scrollHeight;
+      document.querySelectorAll(".step").forEach((el) => {
+        el.classList.toggle("done", (s.done || []).includes(el.dataset.step));
+      });
+      document.querySelectorAll("button").forEach((b) => {
+        if (b.classList.contains("engine")) return;
+        if (b.classList.contains("keep-on")) {
+          b.disabled = false;
+          return;
+        }
+        if (b.dataset.auto != null) {
+          b.disabled = true;
+          return;
+        }
+        b.disabled = !!s.busy;
+      });
+      const showGate = phase === "watching" || phase === "hold" || (phase === "ready" && (s.recording || s.finished));
+      gate.classList.toggle("show", showGate);
+      gate.classList.toggle("hold", phase === "hold");
+      gate.classList.toggle("ready", phase === "ready");
+      gateWatching.hidden = phase !== "watching";
+      gateHold.hidden = phase !== "hold";
+      gateReady.hidden = phase !== "ready";
+      document.getElementById("markHold").hidden = recBrowser;
+      if (phase === "watching") {
+        if (recBrowser) {
+          gateTitle.textContent = "正在录浏览器";
+          gateText.textContent = "点「停止录制」才会出片。浏览器窗口会留着。";
+        } else {
+          const mark = s.expect ? ("看到「" + s.expect + "」就算演示完。") : "任务成功停了才关窗。";
+          const wait = s.elapsed == null ? "" : ("已 " + s.elapsed + "s。");
+          gateTitle.textContent = "任务在跑";
+          gateText.textContent = mark + " 失败会叫你介入。" + (wait ? " " + wait : "");
+        }
+      } else if (phase === "hold") {
+        gateTitle.textContent = s.failed ? "任务失败，需要你介入" : "需要人介入";
+        gateText.textContent = s.hold_reason || "去新窗口把卡住的地方处理掉。录屏还在录。";
+      } else if (phase === "ready") {
+        gateTitle.textContent = "这个 case 完了";
+        gateText.textContent = (s.finish_reason || "任务结束") + "。新窗口已关。";
+      }
+      if (s.last_output && (phase === "watching" || phase === "hold")) {
+        gateOut.hidden = false;
+        gateOut.textContent = s.last_output;
+      } else {
+        gateOut.hidden = true;
+        gateOut.textContent = "";
+      }
+      fillTakes(s.takes);
+      showPlan(s.plan, false);
+      if (Array.isArray(s.chat) && !localTyping) {
+        const key = chatKey(s.chat);
+        if (key !== chatStamp) {
+          chatStamp = key;
+          renderChat(s.chat);
+        }
+        setTyping(!!s.chatting || !!s.busy, s.busy && !s.chatting ? "正在按章出片" : "导播在想");
+      }
+    }
+
+    async function post(url, extra) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload(), ...(extra || {}) }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data.windows) && !Array.isArray(data.chat)) {
+        fillWindows(data.windows);
+        return data;
+      }
+      paint(data);
+      if (!data.ok && data.error && url !== "/api/chat") alert(data.error);
+      return data;
+    }
+
+    document.getElementById("composer").onsubmit = (ev) => {
+      ev.preventDefault();
+      sendTalk();
+    };
+    talk.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        sendTalk();
+      }
+    });
+    talk.addEventListener("input", () => {
+      talk.style.height = "48px";
+      talk.style.height = Math.min(talk.scrollHeight, 140) + "px";
+    });
+    prompt.addEventListener("input", () => { prompt.dataset.dirty = "1"; });
+    expectEl.addEventListener("input", () => { expectEl.dataset.dirty = "1"; });
+    demoScript.addEventListener("input", () => { demoScript.dataset.dirty = "1"; });
+    browserUrl.addEventListener("input", () => { browserUrl.dataset.dirty = "1"; });
+    document.getElementById("rundownScript").addEventListener("input", () => {
+      document.getElementById("rundownScript").dataset.dirty = "1";
+    });
+    document.getElementById("termScript").addEventListener("input", () => {
+      document.getElementById("termScript").dataset.dirty = "1";
+    });
+
+    document.getElementById("runAll").onclick = () => post("/api/run-all");
+    document.getElementById("stop").onclick = () => post("/api/record-stop");
+    document.getElementById("stopWatch").onclick = () => post("/api/record-stop");
+    document.getElementById("stopBrowser").onclick = () => post("/api/record-stop");
+    document.getElementById("abortBrowser").onclick = () => {
+      if (!confirm("作废这段录屏并删掉文件？")) return;
+      post("/api/record-abort");
+    };
+    document.getElementById("markHold").onclick = () => post("/api/hold");
+    document.getElementById("humanOk").onclick = () => post("/api/human-ok");
+    document.getElementById("stopKeep").onclick = () => post("/api/record-stop");
+    document.getElementById("stopReady").onclick = () => post("/api/record-stop");
+    document.getElementById("abortRec").onclick = () => {
+      if (!confirm("作废这段录屏并删掉文件？新窗口里的改动不会自动还原。")) return;
+      post("/api/record-abort");
+    };
+    document.querySelectorAll("button[data-api]").forEach((btn) => {
+      btn.onclick = () => post(btn.dataset.api);
+    });
+
+    function fillWindows(list) {
+      const keep = browserWin.value;
+      browserWin.innerHTML = "";
+      const rows = list || [];
+      if (!rows.length) {
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "还没扫到浏览器窗口";
+        browserWin.appendChild(empty);
+        return;
+      }
+      rows.forEach((w) => {
+        const opt = document.createElement("option");
+        opt.value = String(w.id);
+        opt.textContent = (w.owner || "") + " · " + (w.name || "未命名窗口");
+        browserWin.appendChild(opt);
+      });
+      if (keep && [...browserWin.options].some((o) => o.value === keep)) {
+        browserWin.value = keep;
+      }
+    }
+
+    async function loadWindows() {
+      const res = await fetch("/api/windows");
+      const data = await res.json();
+      fillWindows(data.windows);
+    }
+
+    document.getElementById("runDemo").onclick = () =>
+      post("/api/record-demo", {
+        script: demoScript.value,
+        url: browserUrl.value,
+        query: searchQuery.value,
+        click: clickText.value,
+      });
+    document.getElementById("refreshWins").onclick = () => loadWindows();
+    document.getElementById("openBrowser").onclick = () =>
+      post("/api/open-browser", { url: browserUrl.value }).then(() => loadWindows());
+    document.getElementById("recBrowser").onclick = () =>
+      post("/api/record-start", {
+        target: "browser",
+        window_id: browserWin.value,
+        url: browserUrl.value,
+      });
+
+    const takeList = document.getElementById("takeList");
+    function fillTakes(rows) {
+      const keep = [...takeList.selectedOptions].map((o) => o.value);
+      takeList.innerHTML = "";
+      (rows || []).forEach((t) => {
+        const opt = document.createElement("option");
+        opt.value = t.path;
+        opt.textContent = t.id + (t.notes ? " · 有讲义" : "");
+        takeList.appendChild(opt);
+      });
+      keep.forEach((v) => {
+        const hit = [...takeList.options].find((o) => o.value === v);
+        if (hit) hit.selected = true;
+      });
+    }
+    function selectedTakes() {
+      return [...takeList.selectedOptions].map((o) => o.value);
+    }
+    document.getElementById("snapSave").onclick = () => post("/api/snapshot", { name: "baseline" });
+    document.getElementById("snapRestore").onclick = () => post("/api/restore", { name: "baseline" });
+    document.getElementById("runTerm").onclick = () =>
+      post("/api/record-term", { script: document.getElementById("termScript").value });
+    document.getElementById("openTerm").onclick = () => post("/api/open-term");
+    document.getElementById("runRundown").onclick = () =>
+      post("/api/rundown", { script: document.getElementById("rundownScript").value });
+    document.getElementById("joinTakes").onclick = () =>
+      post("/api/assemble", { mode: "concat", takes: selectedTakes() });
+    document.getElementById("splitTakes").onclick = () => {
+      const picks = selectedTakes();
+      if (picks.length < 2) {
+        alert("左右对比要勾选两段成片。");
+        return;
+      }
+      post("/api/assemble", { mode: "split", left: picks[0], right: picks[1] });
+    };
+    document.getElementById("packLesson").onclick = () => {
+      const picks = selectedTakes();
+      post("/api/pack", { folder: picks[0] ? picks[0].replace(/\/lesson\.mp4$/, "") : "" });
+    };
+
+    document.getElementById("restartChat").onclick = () => post("/api/project", { action: "close" });
+    document.getElementById("projectNew").onclick = () => post("/api/project", { action: "new" });
+    document.getElementById("projectLast").onclick = () => {
+      const slug = document.getElementById("projectLast").dataset.slug;
+      if (!slug) return;
+      post("/api/project", { action: "open", slug });
+    };
+    document.getElementById("engines").onclick = (e) => {
+      const btn = e.target.closest(".engine");
+      if (!btn || btn.disabled || btn.classList.contains("on")) return;
+      post("/api/engine", { engine: btn.dataset.engine }).then((data) => {
+        if (data && data.ok === false && data.error) alert(data.error);
+      });
+    };
+
+    async function tick() {
+      const res = await fetch("/api/status");
+      paint(await res.json());
+    }
+    tick();
+    loadWindows();
+    setInterval(tick, 1200);
+  </script>
+</body>
+</html>
