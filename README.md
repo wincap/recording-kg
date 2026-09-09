@@ -235,6 +235,31 @@ The player advances on a global clock. In tutor mode it uses a **separate scrubb
 
 ---
 
+## Next improvements
+
+Near-term (product completeness):
+
+1. **Demo the tutor main stage** — record upload → AI notes → side-by-side tutor UI (missing from current watch demo)
+2. **More reliable Cursor takes** — wait for full agent runs; avoid stopping mid-thought; clearer FastAPI/other-framework completion checks
+3. **One-click student demo** — scripted watch recording (`chapter` / `t` / `play` URL params) so README demos stay fresh
+4. **Install story** — `requirements.txt` / lockfile and a short “first successful run” checklist
+
+Mid-term (scale & quality):
+
+5. **Knowledge / retrieval** — optional vector store (e.g. Chroma) over lesson notes + student uploads for better tutoring
+6. **Multi-model engines** — pluggable LLM beyond DeepSeek; clearer engine status in studio
+7. **Cross-platform capture** — reduce macOS-only assumptions for window/screen recording
+8. **Export packs** — publish a chapter as a portable folder (timeline + assets) without the whole `recordings/` tree
+
+Later (if demand shows up):
+
+9. **Commercial license path** — simple Issue / email flow for paid deploy & white-label
+10. **Hosted preview** — optional read-only student player for public sample courses (no secrets, no private notes)
+
+Feedback and PRs welcome via [Issues](https://github.com/wincap/recording-kg/issues).
+
+---
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](./LICENSE) — **free for personal study, research, and other non-commercial use**; **any commercial use** (paid service, closed product, commercial training, etc.) **needs a separate license**.  
