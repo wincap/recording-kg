@@ -4,15 +4,14 @@
 > API、目录约定和学生端 UI 仍可能变化；适合试用与反馈，不保证生产稳定。  
 > 欢迎 Issue / Discussion。演示视频可放在下方「演示」小节（录好 30～60 秒后替换链接）。
 
-本地可跑的 **录课导播台 + 时间轴学生端**（AGPL-3.0 开源）。  
+本地可跑的 **录课导播台 + 时间轴学生端**（源码公开；**非商用免费，商用需授权**）。  
 面向编程教学：PPT 口播、Cursor 实操录屏、学生端按 `timeline.json` 播放，答疑时主舞台接管讲解。
 
 仓库：https://github.com/wincap/recording-kg
 
-> **开源范围**：代码与文档。  
-> **不开源**：API Key、本地 `recordings/` 成片、学员笔记与上传素材（默认已在 `.gitignore`）。
-
-需要代录、私有部署或定制？请开 [Issue](https://github.com/wincap/recording-kg/issues)。
+> **公开范围**：代码与文档。  
+> **不公开**：API Key、本地 `recordings/` 成片、学员笔记与上传素材（默认已在 `.gitignore`）。  
+> **商用**：代录、私有部署、二次销售等请先开 [Issue](https://github.com/wincap/recording-kg/issues) 申请授权。
 
 ---
 
@@ -231,5 +230,5 @@ python -m unittest test_lesson_tools.py -v
 
 ## 许可证
 
-[AGPL-3.0](./LICENSE) — 可使用、修改、分发，但**衍生作品也须开源**；若把改过的版本做成网络服务对外提供，也必须向用户开放对应源码。  
+[PolyForm Noncommercial 1.0.0](./LICENSE) — **个人学习、研究、非营利用途可免费使用与修改**；**任何商用（含收费服务、闭源产品、商业培训等）须单独授权**。  
 再次提醒：不要把 `.env`、成片或学员隐私提交进公开仓库。
