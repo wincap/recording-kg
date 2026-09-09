@@ -24,11 +24,17 @@
 | 3 | 切到 Cursor **录屏视频** |
 | 4 | **答疑主舞台**：学生代码 / AI 讲义左右分栏 |
 
-**演示动画（约 35 秒）：**
+**整屏实操录屏（第 3 章 Cursor，约 32 秒）：**
+
+![Cursor 整屏实操](docs/demo-cursor.gif)
+
+视频文件：[docs/demo-cursor.mp4](docs/demo-cursor.mp4)
+
+**学生端流程示意（截图拼）：**
 
 ![课场演示](docs/demo-watch.gif)
 
-视频文件：[docs/demo-watch.mp4](docs/demo-watch.mp4)
+[docs/demo-watch.mp4](docs/demo-watch.mp4)
 
 本地复现：
 
