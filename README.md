@@ -32,11 +32,11 @@ Repo: https://github.com/wincap/recording-kg
 
 Video: [docs/demo-cursor.mp4](docs/demo-cursor.mp4)
 
-**Student UI walkthrough (slideshow):**
+**Student player window capture (ch.3: PPT → handoff → hands-on → recap, ~40s):**
 
-![Watch UI demo](docs/demo-watch.gif)
+![Student watch UI](docs/demo-watch.gif)
 
-[docs/demo-watch.mp4](docs/demo-watch.mp4)
+Video: [docs/demo-watch.mp4](docs/demo-watch.mp4)
 
 Try locally:
 
