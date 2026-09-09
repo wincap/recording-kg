@@ -1,9 +1,32 @@
 # recording-kg · 课场
 
-本地可跑的 **录课导播台 + 时间轴学生端**。  
+> **Status: Early Preview（早期预览）**  
+> API、目录约定和学生端 UI 仍可能变化；适合试用与反馈，不保证生产稳定。  
+> 欢迎 Issue / Discussion。演示视频可放在下方「演示」小节（录好 30～60 秒后替换链接）。
+
+本地可跑的 **录课导播台 + 时间轴学生端**（MIT 开源）。  
 面向编程教学：PPT 口播、Cursor 实操录屏、学生端按 `timeline.json` 播放，答疑时主舞台接管讲解。
 
-仓库：https://github.com/wincap/recording-kg（私有）
+仓库：https://github.com/wincap/recording-kg
+
+> **开源范围**：代码与文档。  
+> **不开源**：API Key、本地 `recordings/` 成片、学员笔记与上传素材（默认已在 `.gitignore`）。
+
+需要代录、私有部署或定制？请开 [Issue](https://github.com/wincap/recording-kg/issues)。
+
+---
+
+## 演示
+
+1. 启动后打开学生端：http://127.0.0.1:8765/watch  
+2. 看一章「幻灯片 + 口播」，再切到含 Cursor 录屏的章节  
+3. （可选）上传一段报错 / 代码，看主舞台进入答疑分栏  
+
+**30～60 秒录屏（待补）：** 用系统截屏录上述流程，导出 mp4/gif 后可嵌在这里，例如：
+
+```text
+docs/demo-watch.mp4
+```
 
 ---
 
@@ -187,15 +210,17 @@ python -m unittest test_lesson_tools.py -v
 
 ---
 
-## 已知边界
+## 已知边界（Early Preview）
 
+- 当前为早期预览：接口与 UI 可能出现不兼容变更  
 - 录屏相关能力以 **macOS** 为主  
-- 答疑模型当前固定走 **DeepSeek**（需有效 API Key）  
+- 答疑模型当前走 **DeepSeek**（需自备 API Key）  
 - 截图 OCR 依赖本机 `tesseract`；未安装时仍可答疑，但看图能力弱  
-- `recordings/` 体积大，用网盘/对象存储备份，而不是 Git  
+- `recordings/` 体积大，用网盘/对象存储备份，不要进 Git  
 
 ---
 
 ## 许可证
 
-未单独声明许可前，默认 **私有使用**。对外开源前请补全 `LICENSE`，并再次确认无密钥、无学员隐私数据。
+[MIT](./LICENSE) — 可自由使用、修改、商用；请保留版权声明。  
+再次提醒：不要把 `.env`、成片或学员隐私提交进公开仓库。
