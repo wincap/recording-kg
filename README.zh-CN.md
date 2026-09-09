@@ -32,11 +32,11 @@
 
 视频文件：[docs/demo-cursor.mp4](docs/demo-cursor.mp4)
 
-**学生端流程示意（截图拼）：**
+**学生端真实窗口录屏（第 3 章：PPT → 衔接 → 实操 → 对照，约 40 秒）：**
 
-![课场演示](docs/demo-watch.gif)
+![课场学生端](docs/demo-watch.gif)
 
-[docs/demo-watch.mp4](docs/demo-watch.mp4)
+视频文件：[docs/demo-watch.mp4](docs/demo-watch.mp4)
 
 本地复现：
 

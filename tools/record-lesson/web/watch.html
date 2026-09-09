@@ -1235,6 +1235,9 @@
   <script>
     const params = new URLSearchParams(location.search);
     let slug = params.get("slug") || "";
+    const demoChapter = Number(params.get("chapter") || 0) || 0;
+    const demoT = Number(params.get("t") || 0) || 0;
+    const demoPlay = params.get("play") === "1";
     let currentChapter = null;
     let wasPlayingBeforeTalk = false;
     let pendingAsset = { kind: "text", content: "", image_data_url: "", title: "" };
@@ -1784,6 +1787,12 @@
       }
     }
 
+    function applyDemoQuery() {
+      if (!(demoT > 0 || demoPlay)) return;
+      const t = Math.max(0, demoT);
+      seekTo(t, !!demoPlay);
+    }
+
     function shortText(s, n) {
       const t = String(s || "").replace(/\s+/g, " ").trim();
       if (t.length <= n) return t;
@@ -1964,8 +1973,15 @@
           list.appendChild(btn);
         });
         const first = chapters.find((ch) => ch.ready) || chapters[0];
-        if (first) showChapter(first);
-        else {
+        const pick = demoChapter
+          ? (chapters.find((ch) => Number(ch.n) === demoChapter && ch.ready)
+            || chapters.find((ch) => Number(ch.n) === demoChapter)
+            || first)
+          : first;
+        if (pick) {
+          showChapter(pick);
+          applyDemoQuery();
+        } else {
           if (els.bootOverlay) {
             els.bootOverlay.querySelector("span").textContent = "本课程暂无章节";
           }
